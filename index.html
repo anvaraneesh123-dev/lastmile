@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>LastMile Guardian — Executive Civic Usability Network</title>
+
+  <!-- PWA & Mobile Web App Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#020617">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- Fonts & Leaflet Engine -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    /* ==========================================================================
+       EXECUTIVE DESIGN SYSTEM & EMBEDDED STYLESHEET
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg-base: #020617;
+      --surface-panel: rgba(15, 23, 42, 0.95);
+      --surface-glass: rgba(15, 23, 42, 0.88);
+      --border-glass: rgba(255, 255, 255, 0.12);
+      --brand-cyan: #38bdf8;
+      --brand-emerald: #10b981;
+      --brand-amber: #f59e0b;
+      --brand-rose: #ef4444;
+      --spring-physics: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body {
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+      background: var(--bg-base);
+      color: #f8fafc;
+      position: relative;
+    }
+
+    /* AEROSPACE RADAR BOOT SCREEN */
+    .portal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: radial-gradient(circle at center, #0a172e 0%, #020617 85%);
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      animation: portalEntrance 0.4s var(--spring-physics);
+      transition: opacity 0.45s ease, visibility 0.45s ease;
+    }
+
+    .portal-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    @keyframes portalEntrance {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .portal-modal-card {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 30px 90px -10px rgba(0, 0, 0, 0.95), 0 0 40px rgba(56, 189, 248, 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .radar-screen-zone {
+      width: 100%;
+      height: 110px;
+      position: relative;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(2, 6, 23, 0.8) 75%);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 18px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .radar-grid-rings {
+      position: absolute;
+      width: 170px;
+      height: 170px;
+      border-radius: 50%;
+      border: 1px dashed rgba(56, 189, 248, 0.35);
+    }
+
+    .radar-grid-rings::after {
+      content: '';
+      position: absolute;
+      inset: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .radar-sweep-beam {
+      position: absolute;
+      width: 190px;
+      height: 190px;
+      background: conic-gradient(from 0deg, rgba(56, 189, 248, 0.5) 0deg, transparent 65deg);
+      border-radius: 50%;
+      animation: rotateSweep 3s linear infinite;
+    }
+
+    @keyframes rotateSweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .radar-telemetry-badge {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: var(--brand-cyan);
+      background: rgba(2, 6, 23, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    .beacon-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--brand-cyan);
+      box-shadow: 0 0 10px var(--brand-cyan);
+      animation: beaconGlow 1.8s infinite ease-in-out;
+    }
+
+    @keyframes beaconGlow {
+      0%, 100% { transform: scale(0.85); opacity: 0.5; }
+      50% { transform: scale(1.25); opacity: 1; }
+    }
+
+    .portal-heading-zone .portal-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #ffffff;
+    }
+
+    .gradient-accent {
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .portal-description {
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-top: 2px;
+    }
+
+    .portal-intent-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .intent-action-tile {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s var(--spring-physics);
+    }
+
+    .intent-action-tile:hover {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .intent-glyph { font-size: 20px; }
+    .intent-text-meta { flex: 1; }
+    .intent-primary-lbl { font-size: 13px; font-weight: 700; color: #f8fafc; }
+    .intent-secondary-lbl { font-size: 10px; color: #64748b; }
+    .intent-arrow-ico { color: #64748b; font-size: 14px; font-weight: 700; }
+
+    .portal-primary-submit {
+      height: 46px;
+      background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+      border: none;
+      border-radius: 14px;
+      color: #020617;
+      font-size: 13.5px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.4);
+      transition: all 0.2s;
+    }
+
+    .portal-primary-submit:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    .portal-spec-footer {
+      font-size: 9.5px;
+      color: #64748b;
+      text-align: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 8px;
+    }
+
+    /* TOP FLOATING COMMAND BAR */
+    .top-command-deck {
+      position: absolute;
+      top: env(safe-area-inset-top, 12px);
+      left: 12px;
+      right: 12px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      max-width: 580px;
+      margin: 0 auto;
+    }
+
+    .search-command-island {
+      pointer-events: auto !important;
+      position: relative;
+      height: 50px;
+      background: var(--surface-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-glass);
+      border-radius: 25px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px 0 14px;
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.65);
+    }
+
+    .btn-network-info {
+      background: none;
+      border: none;
+      font-size: 17px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+
+    #global-service-search {
+      flex: 1;
+      height: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffffff;
+      font-size: 13.5px;
+      font-weight: 500;
+    }
+    #global-service-search::placeholder { color: #64748b; }
+
+    .btn-gps-satellite {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      background: rgba(56, 189, 248, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-gps-satellite svg { width: 18px; height: 18px; fill: var(--brand-cyan); }
+    .btn-gps-satellite.active { background: var(--brand-cyan); }
+    .btn-gps-satellite.active svg { fill: #020617; }
+
+    .search-flyout-menu {
+      display: none;
+      position: absolute;
+      top: 56px;
+      left: 0;
+      right: 0;
+      background: rgba(15, 23, 42, 0.98);
+      backdrop-filter: blur(24px);
+      border: 1px solid var(--border-glass);
+      border-radius: 18px;
+      max-height: 290px;
+      overflow-y: auto;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.75);
+    }
+
+    .search-match-row {
+      padding: 11px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+    }
+    .search-match-row:hover { background: rgba(56, 189, 248, 0.12); }
+    .match-main-text { font-size: 13px; font-weight: 700; color: #fff; }
+    .match-sub-text { font-size: 9.5px; color: #94a3b8; }
+    .match-badge { font-size: 10px; font-weight: 800; }
+
+    .category-carousel {
+      pointer-events: auto !important;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .category-carousel::-webkit-scrollbar { display: none; }
+
+    .filter-pill {
+      white-space: nowrap;
+      background: var(--surface-glass);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border-glass);
+      color: #cbd5e1;
+      padding: 7px 13px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+      transition: all 0.2s var(--spring-physics);
+    }
+
+    .filter-pill.active {
+      background: var(--brand-cyan);
+      color: #020617;
+      border-color: var(--brand-cyan);
+    }
+
+    .filter-pill.satellite-toggle {
+      margin-left: auto;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* MAP VIEWPORT */
+    #map {
+      height: 100dvh;
+      width: 100vw;
+      z-index: 1;
+    }
+
+    /* LIVE USER BEACON */
+    .user-live-beacon {
+      position: relative;
+      width: 32px;
+      height: 32px;
+    }
+
+    .user-center-core {
+      position: absolute;
+      inset: 7px;
+      background: #38bdf8;
+      border: 2.5px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 16px #38bdf8;
+      z-index: 2;
+    }
+
+    .user-pulsing-wave {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.4);
+      animation: userWave 1.8s infinite ease-out;
+    }
+
+    @keyframes userWave {
+      0% { transform: scale(0.6); opacity: 0.9; }
+      100% { transform: scale(2.6); opacity: 0; }
+    }
+
+    .user-floating-lbl {
+      position: absolute;
+      top: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      font-size: 8.5px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 10px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+
+    /* FACILITY MARKERS */
+    .custom-radar-marker {
+      position: relative;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+    }
+
+    .radar-pill-glyph {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+      position: absolute;
+      top: 1px;
+      left: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    .radar-pulsing-halo {
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      opacity: 0.6;
+      animation: radarPulseHalo 2.4s infinite ease-out;
+      pointer-events: none !important;
+    }
+
+    @keyframes radarPulseHalo {
+      0% { transform: scale(0.6); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    .green-fill, .green-halo { background: var(--brand-emerald); }
+    .yellow-fill, .yellow-halo { background: var(--brand-amber); }
+    .red-fill, .red-halo { background: var(--brand-rose); }
+
+    /* FLOWING MARCHING ANTS DIRECTIONAL VECTOR */
+    .leaflet-interactive.directional-flow-line {
+      stroke-dasharray: 8, 14;
+      animation: flowMarchingAnts 1.2s linear infinite;
+    }
+
+    @keyframes flowMarchingAnts {
+      from { stroke-dashoffset: 22; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    /* AUTONOMOUS REROUTE ALERT CARD */
+    .reroute-alert-card {
+      position: absolute;
+      top: calc(env(safe-area-inset-top, 12px) + 98px);
+      left: 12px;
+      right: 12px;
+      max-width: 580px;
+      margin: 0 auto;
+      z-index: 1001;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-left: 5px solid var(--brand-rose);
+      border-radius: 18px;
+      padding: 15px;
+      display: none;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
+      animation: slideInDown 0.35s var(--spring-physics);
+      pointer-events: auto !important;
+    }
+
+    @keyframes slideInDown {
+      from { opacity: 0; transform: translateY(-18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .alert-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .alert-card-badge {
+      font-size: 9.5px;
+      font-weight: 800;
+      color: var(--brand-rose);
+      letter-spacing: 0.6px;
+    }
+
+    .btn-alert-close {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .route-trajectory-vector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    .trajectory-from { color: #f87171; text-decoration: line-through; }
+    .trajectory-arrow { color: #94a3b8; font-size: 12px; }
+    .trajectory-to { color: #34d399; font-weight: 800; }
+    .trajectory-meta { font-size: 11px; color: #94a3b8; margin: 5px 0 12px 0; line-height: 1.4; }
+
+    .alert-actions-deck { display: flex; gap: 8px; }
+
+    .btn-turn-by-turn-nav {
+      flex: 2;
+      height: 40px;
+      background: var(--brand-cyan);
+      color: #020617;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      box-shadow: 0 4px 16px rgba(56, 189, 248, 0.35);
+      transition: all 0.2s var(--spring-physics);
+    }
+
+    .btn-inspect-peer {
+      flex: 1;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-turn-by-turn-nav.full-width { width: 100%; }
+
+    /* SLIDE-UP BOTTOM SHEET */
+    .bottom-drawer-sheet {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: var(--surface-panel);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border-top: 1px solid var(--border-glass);
+      border-radius: 26px 26px 0 0;
+      box-shadow: 0 -14px 45px rgba(0, 0, 0, 0.75);
+      transition: height 0.35s var(--spring-physics);
+      display: flex;
+      flex-direction: column;
+      max-width: 580px;
+      margin: 0 auto;
+      pointer-events: auto !important;
+    }
+
+    .bottom-drawer-sheet.peek { height: 86px; }
+    .bottom-drawer-sheet.expanded { height: 58dvh; }
+
+    .drawer-handle-zone {
+      width: 100%;
+      padding: 8px 0 4px 0;
+      display: flex;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .drawer-handle-bar {
+      width: 42px;
+      height: 4px;
+      border-radius: 2px;
+      background: #475569;
+    }
+
+    .drawer-peek-bar {
+      padding: 0 18px 8px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+    }
+
+    .drawer-summary-left { display: flex; align-items: center; gap: 10px; }
+    .emerald-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--brand-emerald);
+      box-shadow: 0 0 10px var(--brand-emerald);
+    }
+
+    .drawer-title-heading { font-size: 13.5px; font-weight: 800; color: #ffffff; }
+    .drawer-sub-heading { font-size: 10px; color: #94a3b8; }
+    .btn-drawer-expand {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: #94a3b8;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 10px;
+      cursor: pointer;
+    }
+
+    .drawer-scroll-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 18px 24px 18px;
+    }
+
+    .directory-pane-title { font-size: 9.5px; font-weight: 800; letter-spacing: 0.8px; color: #64748b; margin-bottom: 8px; }
+
+    .facility-card-stack { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+
+    .facility-item-tile {
+      background: rgba(2, 6, 23, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.15s var(--spring-physics);
+    }
+
+    .facility-item-tile:hover {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .facility-name-text { font-size: 13px; font-weight: 700; color: #ffffff; }
+    .facility-meta-text { font-size: 10px; color: #94a3b8; }
+    .facility-tile-right { text-align: right; }
+    .facility-status-badge { font-size: 10.5px; font-weight: 800; display: block; }
+    .facility-distance-lbl { font-size: 9px; color: #64748b; }
+
+    .text-green { color: var(--brand-emerald); }
+    .text-yellow { color: var(--brand-amber); }
+    .text-red { color: var(--brand-rose); }
+
+    .telemetry-console-card {
+      background: #020617;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 9px 12px;
+    }
+
+    .console-heading-tag { font-size: 8px; font-weight: 800; color: var(--brand-cyan); letter-spacing: 0.5px; margin-bottom: 2px; }
+    .console-stream-feed { font-size: 9.5px; color: #cbd5e1; font-family: 'JetBrains Mono', monospace; line-height: 1.35; max-height: 55px; overflow-y: auto; }
+
+    /* DETAIL VIEW */
+    .detail-top-nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .btn-back-to-directory { background: none; border: none; color: var(--brand-cyan); font-size: 11.5px; font-weight: 700; cursor: pointer; }
+    .health-status-chip { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 800; }
+    .health-status-chip.green { background: rgba(16, 185, 129, 0.15); color: var(--brand-emerald); border: 1px solid var(--brand-emerald); }
+    .health-status-chip.yellow { background: rgba(245, 158, 11, 0.15); color: var(--brand-amber); border: 1px solid var(--brand-amber); }
+    .health-status-chip.red { background: rgba(239, 68, 68, 0.15); color: var(--brand-rose); border: 1px solid var(--brand-rose); }
+
+    .detail-facility-name { font-size: 16.5px; font-weight: 800; color: #ffffff; }
+    .detail-facility-subtext { font-size: 11px; color: #94a3b8; margin-bottom: 12px; }
+
+    .operational-callout-box { background: rgba(2, 6, 23, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+    .callout-box-label { font-size: 8.5px; font-weight: 800; color: #64748b; letter-spacing: 0.5px; }
+    .callout-box-val { font-size: 12px; color: #e2e8f0; margin-top: 3px; }
+
+    .kpi-triad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .kpi-metric-box { background: rgba(2, 6, 23, 0.5); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 8px; text-align: center; }
+    .kpi-num-val { display: block; font-size: 14px; font-weight: 800; }
+    .kpi-sub-label { font-size: 8px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+
+    .detail-action-dock { display: flex; flex-direction: column; gap: 8px; }
+
+    /* STEALTH PITCH DEMO CONTROLLER */
+    .pitch-controller-dock {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 9998;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--brand-cyan);
+      border-radius: 14px;
+      padding: 8px 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .pitch-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .pitch-tag { font-size: 9px; font-weight: 800; color: var(--brand-cyan); letter-spacing: 0.8px; }
+    .pitch-version { font-size: 8px; color: #94a3b8; }
+    .pitch-btn-row { display: flex; gap: 6px; }
+
+    .pitch-btn {
+      border: none;
+      border-radius: 6px;
+      padding: 5px 9px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pitch-btn.abort { background: var(--brand-rose); color: #fff; }
+    .pitch-btn.success { background: var(--brand-emerald); color: #020617; }
+    .pitch-btn.reset { background: #334155; color: #cbd5e1; }
+    .pitch-btn:hover { filter: brightness(1.15); }
+  </style>
+</head>
+<body>
+
+<!-- EXECUTIVE RADAR TELEMETRY BOOT SCREEN (OPENING PORTAL) -->
+<section id="onboarding-portal" class="portal-overlay">
+  <div class="portal-modal-card">
+
+    <div class="radar-screen-zone">
+      <div class="radar-grid-rings"></div>
+      <div class="radar-sweep-beam"></div>
+      <div class="radar-telemetry-badge">
+        <span class="beacon-dot"></span>
+        <span id="radar-readout-text">RADAR TELEMETRY BOOTING...</span>
+      </div>
+    </div>
+
+    <div class="portal-heading-zone">
+      <h1 class="portal-title">LastMile<span class="gradient-accent">Guardian</span></h1>
+      <p class="portal-description">Autonomous civic usability grid monitoring real-time transit infrastructure across Kerala.</p>
+    </div>
+
+    <div class="portal-intent-stack">
+      <div class="intent-action-tile" onclick="launchWithIntent('ATM')">
+        <div class="intent-glyph">🏧</div>
+        <div class="intent-text-meta">
+          <div class="intent-primary-lbl">Find Operational ATM</div>
+          <div class="intent-secondary-lbl">Auto-divert from cash-dry machines</div>
+        </div>
+        <span class="intent-arrow-ico">→</span>
+      </div>
+
+      <div class="intent-action-tile" onclick="launchWithIntent('Fuel')">
+        <div class="intent-glyph">⛽</div>
+        <div class="intent-text-meta">
+          <div class="intent-primary-lbl">Active Fuel &amp; CNG Bunks</div>
+          <div class="intent-secondary-lbl">Stockouts &amp; queue duration</div>
+        </div>
+        <span class="intent-arrow-ico">→</span>
+      </div>
+
+      <div class="intent-action-tile" onclick="launchWithIntent('Medical')">
+        <div class="intent-glyph">💊</div>
+        <div class="intent-text-meta">
+          <div class="intent-primary-lbl">24/7 Emergency Medicals</div>
+          <div class="intent-secondary-lbl">Verified night pharmacy counters</div>
+        </div>
+        <span class="intent-arrow-ico">→</span>
+      </div>
+
+      <div class="intent-action-tile" onclick="launchWithIntent('EV')">
+        <div class="intent-glyph">⚡</div>
+        <div class="intent-text-meta">
+          <div class="intent-primary-lbl">EV Fast Charging Plugs</div>
+          <div class="intent-secondary-lbl">Live CCS2 port availability</div>
+        </div>
+        <span class="intent-arrow-ico">→</span>
+      </div>
+    </div>
+
+    <button class="portal-primary-submit" onclick="launchWithIntent('All')">
+      <span>Engage Live 10km GPS Radar</span>
+      <span class="cta-arrow">➔</span>
+    </button>
+
+    <div class="portal-spec-footer">
+      <span>Passive Geofence Inference &bull; Live User Nearest $k$-NN Reroute &bull; Zero Battery Drain</span>
+    </div>
+  </div>
+</section>
+
+<!-- TOP FLOATING COMMAND BAR -->
+<header class="top-command-deck">
+  <div class="search-command-island">
+    <button class="btn-network-info" onclick="openPortal()" title="Network Briefing">🛡️</button>
+    <input type="text" id="global-service-search" placeholder="Search facilities, banks, or Kerala towns..." oninput="handleSearch(this.value)">
+    <button id="gps-action-btn" class="btn-gps-satellite" onclick="toggleHardwareGps()" title="Lock Live Location">
+      <svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-7-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+    </button>
+    <div id="search-dropdown" class="search-flyout-menu"></div>
+  </div>
+
+  <div class="category-carousel">
+    <button class="filter-pill active" data-filter="All" onclick="setCategoryFilter('All', this)">All Nodes</button>
+    <button class="filter-pill" data-filter="ATM" onclick="setCategoryFilter('ATM', this)">🏧 ATMs</button>
+    <button class="filter-pill" data-filter="Fuel" onclick="setCategoryFilter('Fuel', this)">⛽ Fuel</button>
+    <button class="filter-pill" data-filter="Medical" onclick="setCategoryFilter('Medical', this)">💊 24/7 Med</button>
+    <button class="filter-pill" data-filter="EV" onclick="setCategoryFilter('EV', this)">⚡ EV Fast</button>
+    <button class="filter-pill satellite-toggle" onclick="cycleTileLayer()">🛰️ Satellite</button>
+  </div>
+</header>
+
+<!-- FULLSCREEN MAP VIEWPORT -->
+<div id="map"></div>
+
+<!-- AUTONOMOUS REROUTE ALERT CARD -->
+<div id="reroute-card" class="reroute-alert-card">
+  <div class="alert-card-header">
+    <span class="alert-card-badge">⚡ AUTONOMOUS REROUTE ACTIVE</span>
+    <button class="btn-alert-close" onclick="dismissRerouteBanner()">&times;</button>
+  </div>
+  <div class="alert-card-body">
+    <div class="route-trajectory-vector">
+      <span class="trajectory-from" id="reroute-from">Federal Bank ATM</span>
+      <span class="trajectory-arrow">➔</span>
+      <span class="trajectory-to" id="reroute-to">SBI ATM Ezhukone</span>
+    </div>
+    <div class="trajectory-meta" id="reroute-delta">
+      Target node offline. Rerouted to nearest active peer relative to your live GPS position.
+    </div>
+  </div>
+  <div class="alert-actions-deck">
+    <a id="reroute-nav-link" href="#" target="_blank" class="btn-turn-by-turn-nav">
+      <span>Start Turn-by-Turn Navigation</span>
+      <span class="ext-ico">↗</span>
+    </a>
+    <button class="btn-inspect-peer" onclick="inspectReroutePeer()">Inspect Node</button>
+  </div>
+</div>
+
+<!-- MOBILE-FIRST BOTTOM SHEET DRAWER -->
+<div id="bottom-sheet" class="bottom-drawer-sheet peek">
+  <div class="drawer-handle-zone" onclick="toggleSheet()">
+    <div class="drawer-handle-bar"></div>
+  </div>
+
+  <div class="drawer-peek-bar" onclick="toggleSheet()">
+    <div class="drawer-summary-left">
+      <span class="emerald-pulse-dot"></span>
+      <div>
+        <div class="drawer-title-heading" id="sheet-title">10 km Regional Grid</div>
+        <div class="drawer-sub-heading" id="sheet-sub">Scanning real-time dwell telemetry...</div>
+      </div>
+    </div>
+    <button class="btn-drawer-expand" id="sheet-toggle-arrow">▲</button>
+  </div>
+
+  <!-- Directory Pane -->
+  <div id="directory-pane" class="drawer-scroll-body">
+    <div class="directory-pane-title">SERVICES WITHIN 10 KM</div>
+    <div id="facility-directory" class="facility-card-stack"></div>
+
+    <div class="telemetry-console-card">
+      <div class="console-heading-tag">AUTONOMOUS GEOFENCE INFERENCE STREAM</div>
+      <div id="telemetry-feed" class="console-stream-feed">Passive dwell listeners armed across 10km grid...</div>
+    </div>
+  </div>
+
+  <!-- Detail Pane -->
+  <div id="detail-pane" class="drawer-scroll-body" style="display: none;">
+    <div class="detail-top-nav-bar">
+      <button class="btn-back-to-directory" onclick="showDirectoryPane()">← Return to directory</button>
+      <span id="detail-badge" class="health-status-chip green">Verified Active</span>
+    </div>
+    <h2 id="detail-name" class="detail-facility-name">Federal Bank ATM</h2>
+    <p id="detail-sub" class="detail-facility-subtext">Karuvelil Corridor &bull; ATM</p>
+
+    <div class="operational-callout-box">
+      <div class="callout-box-label">OPERATIONAL HEALTH VERIFICATION</div>
+      <div id="detail-status-text" class="callout-box-val">Normal visitor transaction durations confirmed.</div>
+    </div>
+
+    <div class="kpi-triad-grid">
+      <div class="kpi-metric-box">
+        <span class="kpi-num-val" id="kpi-dwell">~2 min</span>
+        <span class="kpi-sub-label" id="kpi-dwell-label">Avg Visit</span>
+      </div>
+      <div class="kpi-metric-box">
+        <span class="kpi-num-val" id="kpi-dist">--</span>
+        <span class="kpi-sub-label">Distance from You</span>
+      </div>
+      <div class="kpi-metric-box">
+        <span class="kpi-num-val text-green" id="kpi-queue">0 - 1 min</span>
+        <span class="kpi-sub-label" id="kpi-queue-label">Queue Wait</span>
+      </div>
+    </div>
+
+    <div class="detail-action-dock">
+      <a id="detail-nav-btn" href="#" target="_blank" class="btn-turn-by-turn-nav full-width">
+        <span>🧭 Navigate with Google Maps</span>
+        <span class="ext-ico">↗</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- STEALTH DEMO PITCH CONTROLLER DOCK -->
+<div class="pitch-controller-dock">
+  <div class="pitch-header">
+    <span class="pitch-tag">PITCH DEMO DECK</span>
+    <span class="pitch-version">v2.4</span>
+  </div>
+  <div class="pitch-btn-row">
+    <button class="pitch-btn abort" onclick="triggerPitchAbort()">⚡ Force ATM Abort</button>
+    <button class="pitch-btn success" onclick="triggerPitchSuccess()">✓ Success Dwell</button>
+    <button class="pitch-btn reset" onclick="resetPitchCorridor()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- Scripts: Leaflet, Supabase Realtime CDN, and App Engine -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
