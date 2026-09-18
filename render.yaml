@@ -1,0 +1,12 @@
+services:
+  # Python 3 Lightweight Web Service (Free Tier)
+  - type: web
+    name: lastmile-backend
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python server.py"
+    envVars:
+      - key: PORT
+        value: 10000

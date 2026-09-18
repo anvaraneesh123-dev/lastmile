@@ -20,7 +20,7 @@ import threading
 import time
 from urllib.parse import parse_qs, urlparse
 
-PORT = 8080
+PORT = int(os.environ.get("PORT", 8080))
 
 class FacilityNode:
     def __init__(self, node_id, name, category, lat, lon, corridor, dwell, queue):

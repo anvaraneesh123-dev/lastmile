@@ -1,0 +1,2 @@
+# LastMile Guardian Python Backend dependencies
+# The core microservice is lightweight and uses the standard library

@@ -825,6 +825,17 @@
       font-family: 'JetBrains Mono', monospace;
     }
 
+    .backend-config-row {
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
     /* ZERO-FRICTION 1-TAP EXIT VERIFICATION MODAL */
     .exit-prompt-overlay {
       position: fixed;
@@ -1309,6 +1320,12 @@
     <div class="current-coords-chip">
       <div>Active Coordinates: <span id="modal-coords-display" style="color:#38bdf8;">--</span></div>
       <div style="margin-top:2px; color:#e2e8f0; font-family:'Plus Jakarta Sans',sans-serif;" id="modal-resolved-address">--</div>
+      
+      <!-- Backend URL Display & Config -->
+      <div class="backend-config-row">
+        <span>Backend API: <strong id="modal-api-endpoint-display" style="color:#38bdf8;">--</strong></span>
+        <button style="background:none; border:1px solid rgba(56,189,248,0.4); color:#38bdf8; border-radius:6px; padding:2px 7px; font-size:9px; font-weight:700; cursor:pointer;" onclick="promptSetBackendUrl()">Set Render URL</button>
+      </div>
     </div>
   </div>
 </div>

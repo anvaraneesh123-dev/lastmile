@@ -26,7 +26,7 @@ import java.util.concurrent.*;
  */
 public class LastMileServer {
 
-    private static final int PORT = 8080;
+    private static final int PORT = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
     private static final Map<String, FacilityNode> facilities = new ConcurrentHashMap<>();
     private static final List<String> telemetryLogs = new CopyOnWriteArrayList<>();
     private static double userCenterLat = 8.9868; // Default corridor

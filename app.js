@@ -7,7 +7,30 @@
 // ============================================================================
 // GLOBAL STATE & SYSTEM REGISTRY
 // ============================================================================
-const API_BASE = 'http://localhost:8080/api';
+function getApiBaseUrl() {
+  const urlParam = new URLSearchParams(window.location.search).get('api');
+  if (urlParam) {
+    const clean = urlParam.replace(/\/$/, '');
+    localStorage.setItem('LASTMILE_API_URL', clean);
+    return clean.endsWith('/api') ? clean : `${clean}/api`;
+  }
+  const saved = localStorage.getItem('LASTMILE_API_URL');
+  if (saved) {
+    const clean = saved.replace(/\/$/, '');
+    return clean.endsWith('/api') ? clean : `${clean}/api`;
+  }
+
+  // Local development default
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:8080/api';
+  }
+
+  // Production Render default (or override via ?api=https://your-service.onrender.com)
+  return 'https://lastmile-backend.onrender.com/api';
+}
+
+const API_BASE = getApiBaseUrl();
+
 
 const state = {
   backendOnline: false,
@@ -961,11 +984,23 @@ function openLocationPickerModal() {
   const modal = document.getElementById('location-picker-modal');
   const coords = document.getElementById('modal-coords-display');
   const addr = document.getElementById('modal-resolved-address');
+  const apiDisplay = document.getElementById('modal-api-endpoint-display');
 
   if (coords) coords.innerText = `${state.userLocation.lat.toFixed(5)}, ${state.userLocation.lon.toFixed(5)}`;
   if (addr) addr.innerText = state.userLocation.addressString;
+  if (apiDisplay) apiDisplay.innerText = API_BASE;
 
   modal.classList.remove('hidden');
+}
+
+function promptSetBackendUrl() {
+  const current = localStorage.getItem('LASTMILE_API_URL') || API_BASE;
+  const next = prompt('Enter your deployed Render backend URL (e.g. https://lastmile-backend.onrender.com):', current);
+  if (next && next.trim()) {
+    const clean = next.trim().replace(/\/$/, '');
+    localStorage.setItem('LASTMILE_API_URL', clean.endsWith('/api') ? clean : `${clean}/api`);
+    window.location.reload();
+  }
 }
 
 function closeLocationPickerModal() {
