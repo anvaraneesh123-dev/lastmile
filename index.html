@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>LastMile Guardian — Executive Civic Usability Network</title>
+  <title>LastMile Guardian — Real-Time Civic Usability Network</title>
 
   <!-- PWA & Mobile Web App Meta Tags -->
   <link rel="manifest" href="manifest.json">
@@ -250,7 +250,7 @@
       z-index: 1000;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 7px;
       pointer-events: none;
       max-width: 580px;
       margin: 0 auto;
@@ -307,6 +307,112 @@
     .btn-gps-satellite svg { width: 18px; height: 18px; fill: var(--brand-cyan); }
     .btn-gps-satellite.active { background: var(--brand-cyan); }
     .btn-gps-satellite.active svg { fill: #020617; }
+    .btn-gps-satellite.locking { animation: beaconGlow 1s infinite alternate; border-color: var(--brand-amber); }
+
+    /* ACCURATE ADDRESS DISPLAY CHIP WITH PRECISION ADJUSTER */
+    .live-address-banner {
+      pointer-events: auto !important;
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 14px;
+      padding: 7px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s var(--spring-physics);
+    }
+
+    .live-address-banner:hover {
+      border-color: rgba(56, 189, 248, 0.6);
+      background: rgba(15, 23, 42, 0.98);
+      transform: translateY(-1px);
+    }
+
+    .address-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .address-pin-icon { font-size: 14px; color: var(--brand-cyan); }
+
+    .address-text-group {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .address-text-string {
+      color: #f1f5f9;
+      font-weight: 700;
+      font-size: 11.5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .address-subtext {
+      color: #94a3b8;
+      font-size: 9.5px;
+      font-weight: 500;
+    }
+
+    .address-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 8px;
+    }
+
+    .address-accuracy-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--brand-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      white-space: nowrap;
+    }
+
+    .btn-adjust-pin {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: var(--brand-cyan);
+      border-radius: 8px;
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+    }
+    .btn-adjust-pin:hover { background: var(--brand-cyan); color: #020617; }
+
+    /* PINPOINT MODE ALERT BANNER */
+    .pinpoint-mode-banner {
+      display: none;
+      pointer-events: auto !important;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+      color: #020617;
+      border-radius: 12px;
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 800;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      align-items: center;
+      justify-content: space-between;
+      animation: slideInDown 0.25s;
+    }
 
     .search-flyout-menu {
       display: none;
@@ -318,13 +424,22 @@
       backdrop-filter: blur(24px);
       border: 1px solid var(--border-glass);
       border-radius: 18px;
-      max-height: 290px;
+      max-height: 320px;
       overflow-y: auto;
       box-shadow: 0 18px 45px rgba(0, 0, 0, 0.75);
     }
 
+    .search-section-header {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: #64748b;
+      padding: 8px 16px 4px 16px;
+      text-transform: uppercase;
+    }
+
     .search-match-row {
-      padding: 11px 16px;
+      padding: 10px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -335,6 +450,11 @@
     .match-main-text { font-size: 13px; font-weight: 700; color: #fff; }
     .match-sub-text { font-size: 9.5px; color: #94a3b8; }
     .match-badge { font-size: 10px; font-weight: 800; }
+
+    .search-place-jump {
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 3px solid var(--brand-cyan);
+    }
 
     .category-carousel {
       pointer-events: auto !important;
@@ -379,12 +499,15 @@
       z-index: 1;
     }
 
-    /* LIVE USER BEACON */
+    /* LIVE USER BEACON (DRAGGABLE) */
     .user-live-beacon {
       position: relative;
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
+      cursor: grab;
     }
+
+    .user-live-beacon:active { cursor: grabbing; }
 
     .user-center-core {
       position: absolute;
@@ -411,19 +534,22 @@
 
     .user-floating-lbl {
       position: absolute;
-      top: -22px;
+      top: -24px;
       left: 50%;
       transform: translateX(-50%);
       white-space: nowrap;
-      background: rgba(15, 23, 42, 0.92);
+      background: rgba(15, 23, 42, 0.94);
       border: 1px solid #38bdf8;
       color: #38bdf8;
-      font-size: 8.5px;
+      font-size: 9px;
       font-weight: 800;
-      padding: 2px 7px;
+      padding: 2px 8px;
       border-radius: 10px;
       letter-spacing: 0.5px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     /* FACILITY MARKERS */
@@ -485,7 +611,7 @@
     /* AUTONOMOUS REROUTE ALERT CARD */
     .reroute-alert-card {
       position: absolute;
-      top: calc(env(safe-area-inset-top, 12px) + 98px);
+      top: calc(env(safe-area-inset-top, 12px) + 140px);
       left: 12px;
       right: 12px;
       max-width: 580px;
@@ -576,6 +702,234 @@
     }
 
     .btn-turn-by-turn-nav.full-width { width: 100%; }
+
+    /* LOCATION PICKER & PRECISION ADJUSTER MODAL */
+    .location-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9997;
+      background: rgba(2, 6, 23, 0.85);
+      backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      animation: portalEntrance 0.25s var(--spring-physics);
+    }
+
+    .location-modal-overlay.hidden { display: none !important; }
+
+    .location-modal-card {
+      width: 100%;
+      max-width: 460px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header-tag { font-size: 9px; font-weight: 800; color: var(--brand-cyan); letter-spacing: 0.8px; }
+    .modal-close-btn { background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer; }
+
+    .location-search-input-box {
+      position: relative;
+      width: 100%;
+    }
+
+    .location-search-input {
+      width: 100%;
+      height: 44px;
+      background: rgba(2, 6, 23, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 0 14px 0 38px;
+      color: #ffffff;
+      font-size: 13px;
+      outline: none;
+    }
+    .location-search-input:focus { border-color: var(--brand-cyan); box-shadow: 0 0 12px rgba(56, 189, 248, 0.3); }
+
+    .input-search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 15px;
+      color: #64748b;
+    }
+
+    .location-results-list {
+      max-height: 180px;
+      overflow-y: auto;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(2, 6, 23, 0.6);
+      display: none;
+    }
+
+    .location-result-item {
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      font-size: 11.5px;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .location-result-item:hover { background: rgba(56, 189, 248, 0.15); color: #ffffff; }
+
+    .location-quick-tools {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-quick-loc {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #e2e8f0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.15s;
+    }
+    .btn-quick-loc:hover {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #ffffff;
+    }
+
+    .current-coords-chip {
+      background: rgba(2, 6, 23, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 10px;
+      color: #94a3b8;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ZERO-FRICTION 1-TAP EXIT VERIFICATION MODAL */
+    .exit-prompt-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9995;
+      background: rgba(2, 6, 23, 0.75);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      animation: portalEntrance 0.3s var(--spring-physics);
+    }
+
+    .exit-prompt-overlay.hidden { display: none !important; }
+
+    .exit-prompt-card {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .exit-prompt-badge {
+      font-size: 9px;
+      font-weight: 800;
+      color: var(--brand-cyan);
+      letter-spacing: 0.8px;
+    }
+
+    .exit-prompt-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.35;
+    }
+
+    .exit-prompt-sub {
+      font-size: 11.5px;
+      color: #94a3b8;
+    }
+
+    .exit-binary-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .btn-exit-binary {
+      height: 48px;
+      border-radius: 14px;
+      border: none;
+      font-size: 13.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-exit-yes {
+      background: var(--brand-emerald);
+      color: #020617;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+    }
+
+    .btn-exit-no {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--brand-rose);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .exit-fault-reasons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .fault-reason-chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 6px 11px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .fault-reason-chip:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--brand-rose);
+      color: #ffffff;
+    }
 
     /* SLIDE-UP BOTTOM SHEET */
     .bottom-drawer-sheet {
@@ -716,6 +1070,23 @@
 
     .detail-action-dock { display: flex; flex-direction: column; gap: 8px; }
 
+    .btn-simulate-visit {
+      height: 38px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 10px;
+      color: var(--brand-cyan);
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .btn-simulate-visit:hover { background: rgba(56, 189, 248, 0.25); }
+
     /* STEALTH PITCH DEMO CONTROLLER */
     .pitch-controller-dock {
       position: fixed;
@@ -774,7 +1145,7 @@
 
     <div class="portal-heading-zone">
       <h1 class="portal-title">LastMile<span class="gradient-accent">Guardian</span></h1>
-      <p class="portal-description">Autonomous civic usability grid monitoring real-time transit infrastructure across Kerala.</p>
+      <p class="portal-description">Real-time civic usability network verifying public utilities (ATMs, Fuel, Medical, EV) before you travel.</p>
     </div>
 
     <div class="portal-intent-stack">
@@ -816,7 +1187,7 @@
     </div>
 
     <button class="portal-primary-submit" onclick="launchWithIntent('All')">
-      <span>Engage Live 10km GPS Radar</span>
+      <span>Engage Live GPS Radar</span>
       <span class="cta-arrow">➔</span>
     </button>
 
@@ -830,11 +1201,32 @@
 <header class="top-command-deck">
   <div class="search-command-island">
     <button class="btn-network-info" onclick="openPortal()" title="Network Briefing">🛡️</button>
-    <input type="text" id="global-service-search" placeholder="Search facilities, banks, or Kerala towns..." oninput="handleSearch(this.value)">
-    <button id="gps-action-btn" class="btn-gps-satellite" onclick="toggleHardwareGps()" title="Lock Live Location">
+    <input type="text" id="global-service-search" placeholder="Search facilities or type any city/area..." oninput="handleSearch(this.value)">
+    <button id="gps-action-btn" class="btn-gps-satellite" onclick="toggleHardwareGps()" title="Lock Live GPS Location">
       <svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-7-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
     </button>
     <div id="search-dropdown" class="search-flyout-menu"></div>
+  </div>
+
+  <!-- ACCURATE LIVE ADDRESS CHIP WITH EDIT/SEARCH ACTION -->
+  <div class="live-address-banner" id="live-address-chip" onclick="openLocationPickerModal()">
+    <div class="address-left">
+      <span class="address-pin-icon">📍</span>
+      <div class="address-text-group">
+        <span id="user-live-address" class="address-text-string">Acquiring live GPS address...</span>
+        <span id="address-subtext" class="address-subtext">Click to search address or drag blue pin</span>
+      </div>
+    </div>
+    <div class="address-right">
+      <span id="gps-accuracy-badge" class="address-accuracy-tag">±--m</span>
+      <button class="btn-adjust-pin" onclick="event.stopPropagation(); openLocationPickerModal()">✏️ Edit</button>
+    </div>
+  </div>
+
+  <!-- PINPOINT ON MAP BANNER -->
+  <div id="map-pinpoint-banner" class="pinpoint-mode-banner">
+    <span>🎯 Pinpoint Mode Active: Click anywhere on the map to set your location</span>
+    <button style="background:#020617; color:#fff; border:none; border-radius:6px; padding:3px 8px; font-weight:800; cursor:pointer;" onclick="disablePinpointMode()">Cancel</button>
   </div>
 
   <div class="category-carousel">
@@ -872,6 +1264,77 @@
       <span class="ext-ico">↗</span>
     </a>
     <button class="btn-inspect-peer" onclick="inspectReroutePeer()">Inspect Node</button>
+  </div>
+</div>
+
+<!-- LOCATION PICKER & PRECISION ADJUSTER MODAL -->
+<div id="location-picker-modal" class="location-modal-overlay hidden">
+  <div class="location-modal-card">
+    <div class="modal-header-row">
+      <span class="modal-header-tag">📍 LOCATION PRECISION ADJUSTER</span>
+      <button class="modal-close-btn" onclick="closeLocationPickerModal()">&times;</button>
+    </div>
+
+    <div>
+      <h3 style="font-size:16px; font-weight:800; color:#fff; margin-bottom:4px;">Set Your Exact Current Location</h3>
+      <p style="font-size:11px; color:#94a3b8;">Search any street, landmark, or city to place the civic usability radar.</p>
+    </div>
+
+    <!-- Quick Search Box -->
+    <div class="location-search-input-box">
+      <span class="input-search-icon">🔍</span>
+      <input type="text" id="modal-address-search-input" class="location-search-input" placeholder="Type street, landmark, or city..." oninput="handleAddressSearch(this.value)">
+    </div>
+
+    <!-- Autocomplete Results -->
+    <div id="modal-address-results" class="location-results-list"></div>
+
+    <!-- Quick Option Buttons -->
+    <div class="location-quick-tools">
+      <button class="btn-quick-loc" onclick="reTriggerGpsHardware()">
+        <span>🛰️</span>
+        <span>Re-Lock Hardware GPS</span>
+      </button>
+      <button class="btn-quick-loc" onclick="useNetworkIpLocation()">
+        <span>🌐</span>
+        <span>Use Network IP Location</span>
+      </button>
+      <button class="btn-quick-loc" onclick="enablePinpointMode()" style="grid-column: span 2;">
+        <span>🎯</span>
+        <span>Click Anywhere on Map to Set Location</span>
+      </button>
+    </div>
+
+    <!-- Coordinate & Address Info -->
+    <div class="current-coords-chip">
+      <div>Active Coordinates: <span id="modal-coords-display" style="color:#38bdf8;">--</span></div>
+      <div style="margin-top:2px; color:#e2e8f0; font-family:'Plus Jakarta Sans',sans-serif;" id="modal-resolved-address">--</div>
+    </div>
+  </div>
+</div>
+
+<!-- ZERO-FRICTION 1-TAP EXIT VERIFICATION MODAL -->
+<div id="exit-prompt-modal" class="exit-prompt-overlay hidden">
+  <div class="exit-prompt-card">
+    <span class="exit-prompt-badge">⚡ ZERO-FRICTION PASSIVE VERIFICATION</span>
+    <h3 class="exit-prompt-title" id="exit-modal-title">Leaving Federal Bank ATM?</h3>
+    <p class="exit-prompt-sub">Were you able to get what you needed? (1-tap verification)</p>
+    
+    <div class="exit-binary-row">
+      <button class="btn-exit-binary btn-exit-yes" onclick="submitExitVerification(true)">
+        <span>✓ Yes, Worked</span>
+      </button>
+      <button class="btn-exit-binary btn-exit-no" onclick="showExitFaultOptions()">
+        <span>✕ No, Failed</span>
+      </button>
+    </div>
+
+    <div id="exit-fault-choices" class="exit-fault-reasons" style="display: none;">
+      <span class="fault-reason-chip" onclick="submitExitFault('Cash Out')">💸 Out of Cash</span>
+      <span class="fault-reason-chip" onclick="submitExitFault('Machine Offline')">⚠️ Machine Offline</span>
+      <span class="fault-reason-chip" onclick="submitExitFault('Fuel Empty')">⛽ Fuel Empty</span>
+      <span class="fault-reason-chip" onclick="submitExitFault('Counter Closed')">🔒 Counter Shut</span>
+    </div>
   </div>
 </div>
 
@@ -933,6 +1396,9 @@
     </div>
 
     <div class="detail-action-dock">
+      <button class="btn-simulate-visit" onclick="simulateUserVisitCurrent()">
+        <span>📍 Simulate Arrival &amp; Exit (<40s Bounce)</span>
+      </button>
       <a id="detail-nav-btn" href="#" target="_blank" class="btn-turn-by-turn-nav full-width">
         <span>🧭 Navigate with Google Maps</span>
         <span class="ext-ico">↗</span>
@@ -954,9 +1420,8 @@
   </div>
 </div>
 
-<!-- Scripts: Leaflet, Supabase Realtime CDN, and App Engine -->
+<!-- Scripts: Leaflet and App Engine -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 </body>
 </html>

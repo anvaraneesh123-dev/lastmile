@@ -1,10 +1,9 @@
 {
   "name": "LastMile Guardian",
   "short_name": "LastMile",
-  "description": "Executive Civic Usability Network for Kerala Transit",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#030712",
-  "theme_color": "#030712",
-  "orientation": "portrait"
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "description": "Real-Time Usability & Fault Inference for Essential Public Services"
 }
