@@ -25,8 +25,8 @@ function getApiBaseUrl() {
     return 'http://localhost:8080/api';
   }
 
-  // Production Render default (or override via ?api=https://your-service.onrender.com)
-  return 'https://lastmile-backend.onrender.com/api';
+  // Production Render live backend URL
+  return 'https://lastmile-backend-leww.onrender.com/api';
 }
 
 const API_BASE = getApiBaseUrl();
