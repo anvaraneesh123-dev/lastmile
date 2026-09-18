@@ -1,23 +1,17 @@
 {
-  "name": "hackdemo",
+  "name": "lastmile-guardian",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
+  "description": "Real-Time Usability & Fault Inference for Essential Public Services",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "build": "echo Static assets ready",
+    "start": "npx -y serve -l 8080 ."
   },
-  "dependencies": {
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
-  },
-  "devDependencies": {
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^6.1.1",
-    "oxlint": "^1.81.0",
-    "vite": "^8.3.0"
-  }
+  "keywords": [
+    "civic-usability",
+    "fault-inference",
+    "lastmile-guardian"
+  ],
+  "author": "anvaraneesh123-dev",
+  "license": "MIT"
 }
