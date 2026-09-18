@@ -1,0 +1,9 @@
+{
+  "name": "LastMile Guardian",
+  "short_name": "LastMile",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "description": "Real-Time Usability & Fault Inference for Essential Public Services"
+}

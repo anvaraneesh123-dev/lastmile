@@ -1,16 +1,3 @@
 {
-  "version": 2,
-  "outputDirectory": "dist",
-  "cleanUrls": true,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        }
-      ]
-    }
-  ]
+  "cleanUrls": true
 }
