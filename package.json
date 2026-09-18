@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "description": "Real-Time Usability & Fault Inference for Essential Public Services",
   "scripts": {
-    "build": "echo Static assets ready",
-    "start": "npx -y serve -l 8080 ."
+    "build": "node build.js",
+    "start": "npx -y serve dist"
   },
   "keywords": [
     "civic-usability",
