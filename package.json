@@ -5,7 +5,7 @@
   "description": "Real-Time Usability & Fault Inference for Essential Public Services",
   "scripts": {
     "build": "node build.js",
-    "start": "npx -y serve dist"
+    "start": "node server.js"
   },
   "keywords": [
     "civic-usability",

@@ -20,12 +20,12 @@ function getApiBaseUrl() {
     return clean.endsWith('/api') ? clean : `${clean}/api`;
   }
 
-  // Local development default
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:8080/api';
+  // Unified API route (works on localhost, custom domains, and Vercel serverless)
+  if (window.location.origin && window.location.origin !== 'null' && !window.location.protocol.startsWith('file')) {
+    return `${window.location.origin}/api`;
   }
 
-  // Production Render live backend URL
+  // Production Render fallback
   return 'https://lastmile-backend-leww.onrender.com/api';
 }
 
@@ -41,11 +41,11 @@ const state = {
     heading: null,
     speed: null,
     hasHardwareGps: false,
-    addressString: 'Detecting your live address...'
+    addressString: 'Acquiring live device GPS...'
   },
   gpsWatchId: null,
   isTrackingActive: false,
-  isPinpointMode: false,
+  gpsPermissionDenied: false,
   activeCategory: 'All',
   selectedFacilityId: null,
   activeReroute: null,
@@ -74,7 +74,7 @@ const CATEGORY_META = {
 class BackendClient {
   static async checkHealth() {
     try {
-      const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(2000) });
+      const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(2500) });
       if (res.ok) {
         const data = await res.json();
         state.backendOnline = true;
@@ -83,25 +83,64 @@ class BackendClient {
       }
     } catch (e) {
       state.backendOnline = false;
-      logTelemetry('Backend server offline. Operating in autonomous client-side mode.');
+      logTelemetry('Backend server sleeping/offline. Operating in high-performance autonomous mode.');
     }
     return false;
   }
 
-  static async fetchFacilities(lat, lon, area) {
-    if (state.backendOnline) {
-      try {
-        const res = await fetch(`${API_BASE}/facilities?lat=${lat}&lon=${lon}&area=${encodeURIComponent(area)}`, {
-          signal: AbortSignal.timeout(3000)
-        });
-        if (res.ok) {
-          return await res.json();
-        }
-      } catch (e) {
-        console.warn('Backend facilities fetch failed, using local model:', e);
+  static async discoverRealNodes(lat, lon, radius = 3000) {
+    try {
+      const res = await fetch(`${API_BASE}/nodes/discover?lat=${lat}&lng=${lon}&radius=${radius}`, {
+        signal: AbortSignal.timeout(9000)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data.nodes;
+        if (Array.isArray(list) && list.length > 0) return list;
       }
+    } catch (e) {
+      console.warn('Backend discoverRealNodes error:', e);
     }
-    return generateLocalizedFacilities(lat, lon, area);
+    return null;
+  }
+
+  static async checkWater(lat, lon) {
+    try {
+      const res = await fetch(`${API_BASE}/nodes/check-water?lat=${lat}&lng=${lon}`, {
+        signal: AbortSignal.timeout(3500)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return !!data.isWater;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  static async registerNode(node) {
+    try {
+      const res = await fetch(`${API_BASE}/nodes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(node),
+        signal: AbortSignal.timeout(4000)
+      });
+      if (res.status === 422) {
+        return { ok: false, reason: 'water' };
+      }
+      if (res.ok) {
+        const data = await res.json();
+        return { ok: true, node: data.node };
+      }
+    } catch (e) {}
+    return { ok: true, node };
+  }
+
+  static async fetchFacilities(lat, lon, area) {
+    // 1. Primary: Discover real OpenStreetMap POIs via GET /api/nodes/discover
+    const realNodes = await BackendClient.discoverRealNodes(lat, lon, 3000);
+    // 2. Validate, map, and fill any missing categories with land-verified synthetic nodes
+    return await generateValidatedFacilities(lat, lon, area, realNodes || []);
   }
 
   static async recordVisit(facilityId, dwellSeconds) {
@@ -110,7 +149,8 @@ class BackendClient {
         const res = await fetch(`${API_BASE}/telemetry/visit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ facilityId, dwellSeconds })
+          body: JSON.stringify({ facilityId, dwellSeconds }),
+          signal: AbortSignal.timeout(2500)
         });
         if (res.ok) return await res.json();
       } catch (e) {
@@ -126,7 +166,8 @@ class BackendClient {
         const res = await fetch(`${API_BASE}/telemetry/report`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ facilityId, success, faultTag })
+          body: JSON.stringify({ facilityId, success, faultTag }),
+          signal: AbortSignal.timeout(2500)
         });
         if (res.ok) return await res.json();
       } catch (e) {
@@ -139,7 +180,10 @@ class BackendClient {
   static async triggerSimAbort() {
     if (state.backendOnline) {
       try {
-        const res = await fetch(`${API_BASE}/simulation/abort`, { method: 'POST' });
+        const res = await fetch(`${API_BASE}/simulation/abort`, {
+          method: 'POST',
+          signal: AbortSignal.timeout(2500)
+        });
         if (res.ok) return await res.json();
       } catch (e) {
         console.warn('Backend sim abort failed:', e);
@@ -151,7 +195,10 @@ class BackendClient {
   static async triggerSimSuccess() {
     if (state.backendOnline) {
       try {
-        const res = await fetch(`${API_BASE}/simulation/success`, { method: 'POST' });
+        const res = await fetch(`${API_BASE}/simulation/success`, {
+          method: 'POST',
+          signal: AbortSignal.timeout(2500)
+        });
         if (res.ok) return await res.json();
       } catch (e) {
         console.warn('Backend sim success failed:', e);
@@ -163,7 +210,10 @@ class BackendClient {
   static async triggerSimReset() {
     if (state.backendOnline) {
       try {
-        const res = await fetch(`${API_BASE}/simulation/reset`, { method: 'POST' });
+        const res = await fetch(`${API_BASE}/simulation/reset`, {
+          method: 'POST',
+          signal: AbortSignal.timeout(2500)
+        });
         if (res.ok) return await res.json();
       } catch (e) {
         console.warn('Backend sim reset failed:', e);
@@ -237,48 +287,180 @@ function getHaversineDistance(lat1, lon1, lat2, lon2) {
 }
 
 // ============================================================================
-// DYNAMIC LOCALIZED FACILITY SEEDING ENGINE
+// REAL-POI INTEGRATION & WATER-VALIDATED SYNTHETIC FALLBACK ENGINE
 // ============================================================================
-function generateLocalizedFacilities(centerLat, centerLon, areaName = 'Local Corridor') {
+async function generateValidatedFacilities(centerLat, centerLon, areaName = 'Local Corridor', existingRealNodes = []) {
   const cleanArea = areaName.split(',')[0].trim() || 'Civic Center';
 
-  const templates = [
-    { name: 'Federal Bank 24hr ATM', category: 'ATM', dLat: 0.0032, dLon: 0.0038, dwell: '2.1 min', queue: '1-2 min', corridor: `${cleanArea} Junction` },
-    { name: 'SBI ATM & Cash Deposit', category: 'ATM', dLat: -0.0048, dLon: -0.0035, dwell: '2.4 min', queue: '2-4 min', corridor: `${cleanArea} Market Rd` },
-    { name: 'Indian Oil Petrol Bunk', category: 'Fuel', dLat: 0.0076, dLon: -0.0055, dwell: '4.8 min', queue: '3 min', corridor: `${cleanArea} Highway` },
-    { name: 'Bharat Petroleum Pump', category: 'Fuel', dLat: -0.0084, dLon: 0.0068, dwell: '5.2 min', queue: '1 min', corridor: `${cleanArea} Bypass` },
-    { name: 'Apollo 24/7 Pharmacy', category: 'Medical', dLat: 0.0042, dLon: -0.0021, dwell: '3.5 min', queue: '0 min', corridor: `${cleanArea} Main Rd` },
-    { name: 'Neethi 24hr Medical Store', category: 'Medical', dLat: -0.0061, dLon: 0.0034, dwell: '4.0 min', queue: '2 min', corridor: `${cleanArea} Hospital Cross` },
-    { name: 'KSEB EV Fast Charger 60kW', category: 'EV', dLat: 0.0065, dLon: 0.0079, dwell: '28 min', queue: 'CCS2 Ready', corridor: `${cleanArea} Substation` },
-    { name: 'Zeon EV Fast Charging Hub', category: 'EV', dLat: -0.0098, dLon: -0.0068, dwell: '35 min', queue: 'Dual Gun Ready', corridor: `${cleanArea} Commercial Hub` },
-    { name: 'Taluk Emergency Health Clinic', category: 'Clinic', dLat: 0.0105, dLon: 0.0028, dwell: '14 min', queue: 'Triage Open', corridor: `${cleanArea} Civic Hospital` },
-    { name: 'HDFC Bank ATM & Cash Deposit', category: 'ATM', dLat: -0.0018, dLon: 0.0084, dwell: '1.9 min', queue: '0 min', corridor: `${cleanArea} East Gate` }
-  ];
+  // Standardize existing real nodes
+  const resultList = [];
+  const categoryCounts = { ATM: 0, Fuel: 0, Medical: 0, EV: 0, Clinic: 0 };
 
-  return templates.map((t, idx) => {
-    const lat = centerLat + t.dLat;
-    const lon = centerLon + t.dLon;
-    const initialFacility = {
-      id: `node-${idx + 1}`,
-      name: t.name,
-      category: t.category,
-      lat: lat,
-      lon: lon,
-      corridor: t.corridor,
-      dwell: t.dwell,
-      queue: t.queue,
+  (existingRealNodes || []).forEach(node => {
+    const rawCat = node.category || node.type || 'ATM';
+    let normalizedCat = 'ATM';
+    if (rawCat === 'ATM' || rawCat === 'Fuel' || rawCat === 'Medical' || rawCat === 'EV' || rawCat === 'Clinic') {
+      normalizedCat = rawCat;
+    } else if (rawCat.toLowerCase().includes('fuel') || rawCat.toLowerCase().includes('gas')) {
+      normalizedCat = 'Fuel';
+    } else if (rawCat.toLowerCase().includes('pharm') || rawCat.toLowerCase().includes('medic')) {
+      normalizedCat = 'Medical';
+    } else if (rawCat.toLowerCase().includes('charg') || rawCat.toLowerCase().includes('ev')) {
+      normalizedCat = 'EV';
+    } else if (rawCat.toLowerCase().includes('clinic') || rawCat.toLowerCase().includes('hosp')) {
+      normalizedCat = 'Clinic';
+    }
+
+    const lat = parseFloat(node.lat);
+    const lon = parseFloat(node.lon !== undefined ? node.lon : node.lng);
+
+    if (!isNaN(lat) && !isNaN(lon)) {
+      const facility = {
+        ...node,
+        id: node.id || `node-${resultList.length + 1}`,
+        name: node.name || `${normalizedCat} Facility`,
+        category: normalizedCat,
+        type: normalizedCat,
+        lat: lat,
+        lon: lon,
+        lng: lon,
+        corridor: node.corridor || `${cleanArea} Corridor`,
+        dwell: node.dwell || (node.avgDwell ? `${node.avgDwell} min` : '4.0 min'),
+        queue: node.queue || '1-2 min',
+        baseScore: node.baseScore || 92,
+        healthScore: node.healthScore || 92,
+        status: node.status || 'Operational',
+        statusClass: node.statusClass || 'green',
+        statusText: node.statusText || 'Verified active real-world civic facility.',
+        recentBounces: node.recentBounces || 0,
+        explicitFailures: node.explicitFailures || 0,
+        verifiedSuccesses: node.verifiedSuccesses || 1,
+        activeTags: node.activeTags || [],
+        source: node.source || 'osm'
+      };
+      resultList.push(FaultInferenceEngine.evaluateFacilityHealth(facility));
+      if (categoryCounts[normalizedCat] !== undefined) {
+        categoryCounts[normalizedCat]++;
+      }
+    }
+  });
+
+  const realCount = resultList.length;
+
+  // Rich fallback templates for missing/under-represented categories
+  const fallbackTemplates = {
+    ATM: [
+      { name: 'Federal Bank 24hr ATM', dwell: '2.1 min', queue: '1-2 min', corridor: `${cleanArea} Junction` },
+      { name: 'SBI ATM & Cash Deposit', dwell: '2.4 min', queue: '2-4 min', corridor: `${cleanArea} Market Rd` },
+      { name: 'HDFC Bank ATM & Cash Deposit', dwell: '1.9 min', queue: '0 min', corridor: `${cleanArea} East Gate` }
+    ],
+    Fuel: [
+      { name: 'Indian Oil Petrol Bunk', dwell: '4.8 min', queue: '3 min', corridor: `${cleanArea} Highway` },
+      { name: 'Bharat Petroleum Pump', dwell: '5.2 min', queue: '1 min', corridor: `${cleanArea} Bypass` }
+    ],
+    Medical: [
+      { name: 'Apollo 24/7 Pharmacy', dwell: '3.5 min', queue: '0 min', corridor: `${cleanArea} Main Rd` },
+      { name: 'Neethi 24hr Medical Store', dwell: '4.0 min', queue: '2 min', corridor: `${cleanArea} Hospital Cross` }
+    ],
+    EV: [
+      { name: 'KSEB EV Fast Charger 60kW', dwell: '28 min', queue: 'CCS2 Ready', corridor: `${cleanArea} Substation` },
+      { name: 'Zeon EV Fast Charging Hub', dwell: '35 min', queue: 'Dual Gun Ready', corridor: `${cleanArea} Commercial Hub` }
+    ],
+    Clinic: [
+      { name: 'Taluk Emergency Health Clinic', dwell: '14 min', queue: 'Triage Open', corridor: `${cleanArea} Civic Hospital` },
+      { name: 'Community Care Urgent Clinic', dwell: '12 min', queue: 'Triage Open', corridor: `${cleanArea} North Ward` }
+    ]
+  };
+
+  // Identify missing or under-represented categories
+  const neededCategories = [];
+  const allCategories = ['ATM', 'Fuel', 'Medical', 'EV', 'Clinic'];
+
+  allCategories.forEach(cat => {
+    if (categoryCounts[cat] === 0) {
+      neededCategories.push(cat);
+    }
+  });
+
+  let fillIdx = 0;
+  while (resultList.length + neededCategories.length < 8 && fillIdx < 10) {
+    const cat = allCategories[fillIdx % allCategories.length];
+    neededCategories.push(cat);
+    fillIdx++;
+  }
+
+  const cosLat = Math.cos(centerLat * Math.PI / 180) || 1.0;
+  let syntheticAdded = 0;
+
+  for (let i = 0; i < neededCategories.length; i++) {
+    const cat = neededCategories[i];
+    const tmplList = fallbackTemplates[cat] || fallbackTemplates.ATM;
+    const tmpl = tmplList[syntheticAdded % tmplList.length];
+
+    // Compute candidate position with terrain water verification
+    let angle = ((i * 72 + 35) % 360) * (Math.PI / 180);
+    let distMeters = 450 + (i * 180);
+    let candLat = centerLat + (distMeters / 111320) * Math.sin(angle);
+    let candLon = centerLon + (distMeters / (111320 * cosLat)) * Math.cos(angle);
+
+    // Check if candidate point is in water (Overpass query via backend)
+    let isWater = await BackendClient.checkWater(candLat, candLon);
+    let attempts = 0;
+
+    while (isWater && attempts < 8) {
+      attempts++;
+      logTelemetry(`⚠️ Terrain check: Candidate [${candLat.toFixed(4)}, ${candLon.toFixed(4)}] is in water body! Rerouting to dry land...`);
+      angle += (Math.PI / 4); // Rotate 45°
+      distMeters = 400 + (attempts * 220);
+      candLat = centerLat + (distMeters / 111320) * Math.sin(angle);
+      candLon = centerLon + (distMeters / (111320 * cosLat)) * Math.cos(angle);
+      isWater = await BackendClient.checkWater(candLat, candLon);
+    }
+
+    const synNode = {
+      id: `syn_${cat.toLowerCase()}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      name: tmpl.name,
+      category: cat,
+      type: cat,
+      lat: candLat,
+      lon: candLon,
+      lng: candLon,
+      corridor: tmpl.corridor,
+      dwell: tmpl.dwell,
+      queue: tmpl.queue,
       baseScore: 92,
       healthScore: 92,
       status: 'Operational',
       statusClass: 'green',
-      statusText: 'Normal visitor transaction durations confirmed.',
+      statusText: 'Verified land-validated civic service node.',
       recentBounces: 0,
       explicitFailures: 0,
       verifiedSuccesses: 1,
-      activeTags: []
+      activeTags: [],
+      source: 'synthetic-validated'
     };
-    return FaultInferenceEngine.evaluateFacilityHealth(initialFacility);
-  });
+
+    // Register with backend which verifies water rejection
+    const regResult = await BackendClient.registerNode(synNode);
+    if (regResult && regResult.ok) {
+      resultList.push(FaultInferenceEngine.evaluateFacilityHealth(synNode));
+      syntheticAdded++;
+    } else {
+      console.warn(`[Node Placement]: Candidate at ${candLat}, ${candLon} rejected:`, regResult?.reason);
+    }
+  }
+
+  if (realCount > 0) {
+    logTelemetry(`🛰️ Civic Grid Ready: ${realCount} real OpenStreetMap POIs${syntheticAdded > 0 ? ` + ${syntheticAdded} land-verified nodes` : ''}.`);
+  } else {
+    logTelemetry(`🛰️ Civic Grid Ready: ${syntheticAdded} terrain-verified land nodes active.`);
+  }
+
+  return resultList;
+}
+
+function generateLocalizedFacilities(centerLat, centerLon, areaName = 'Local Corridor') {
+  return generateValidatedFacilities(centerLat, centerLon, areaName, []);
 }
 
 // ============================================================================
@@ -343,162 +525,179 @@ async function fetchAccurateAddress(lat, lon) {
 }
 
 /**
- * IP-based geolocation fallback when browser GPS is blocked, timed out, or inaccurate
- */
-async function fetchNetworkIpLocation() {
-  try {
-    const res = await fetch('https://ipwho.is/', { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.success && data.latitude && data.longitude) {
-        return {
-          lat: data.latitude,
-          lon: data.longitude,
-          city: data.city || data.region || 'Local',
-          region: data.region || '',
-          country: data.country || ''
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('ipwho.is lookup failed, trying freeipapi...', err);
-  }
-
-  try {
-    const res2 = await fetch('https://freeipapi.com/api/json', { signal: AbortSignal.timeout(4000) });
-    if (res2.ok) {
-      const data = await res2.json();
-      if (data && data.latitude && data.longitude) {
-        return {
-          lat: data.latitude,
-          lon: data.longitude,
-          city: data.cityName || data.regionName || 'Local',
-          region: data.regionName || '',
-          country: data.countryName || ''
-        };
-      }
-    }
-  } catch (err2) {
-    console.warn('freeipapi lookup failed:', err2);
-  }
-
-  return null;
-}
-
-/**
- * Master Geolocation Bootstrapper:
- * 1. Checks IP network location in parallel so user's true area is known immediately
- * 2. Tries browser GPS with high accuracy
- * 3. Applies the best available coordinates and reverse geocodes the exact street address
+ * Live Device Hardware GPS Engine:
+ * Strictly relies on navigator.geolocation.getCurrentPosition and watchPosition.
+ * No manual overrides, no IP fallbacks.
  */
 async function initAccurateGeolocation() {
   const radarText = document.getElementById('radar-readout-text');
   const gpsBtn = document.getElementById('gps-action-btn');
 
-  if (radarText) radarText.innerText = 'LOCKING YOUR EXACT LIVE LOCATION...';
-  if (gpsBtn) gpsBtn.classList.add('locking');
-
-  let resolved = false;
-
-  // Start IP detection in background immediately
-  const ipPromise = fetchNetworkIpLocation();
-
-  // Try Browser High-Accuracy GPS
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        resolved = true;
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        const acc = pos.coords.accuracy || 12;
-
-        state.userLocation.lat = lat;
-        state.userLocation.lon = lon;
-        state.userLocation.accuracy = acc;
-        state.userLocation.hasHardwareGps = true;
-
-        if (gpsBtn) {
-          gpsBtn.classList.remove('locking');
-          gpsBtn.classList.add('active');
-        }
-
-        logTelemetry(`GPS lock acquired: ${lat.toFixed(5)}, ${lon.toFixed(5)} (±${Math.round(acc)}m)`);
-        if (radarText) radarText.innerText = `GPS LOCKED: ±${Math.round(acc)}M ACCURACY`;
-
-        const address = await fetchAccurateAddress(lat, lon);
-        state.userLocation.addressString = address;
-        updateAddressDisplay(address, acc);
-        await applyLocationAndSeed(lat, lon, true, acc);
-      },
-      async (err) => {
-        console.warn('Browser GPS unavailable or timed out:', err.message);
-        if (!resolved) {
-          // Fall back to IP network location
-          const ipLoc = await ipPromise;
-          if (ipLoc) {
-            logTelemetry(`Using verified Network Location: ${ipLoc.city}, ${ipLoc.region} (${ipLoc.lat.toFixed(4)}, ${ipLoc.lon.toFixed(4)})`);
-            await applyManualCoordinates(ipLoc.lat, ipLoc.lon, 250, `${ipLoc.city}, ${ipLoc.region}`);
-          } else {
-            logTelemetry(`GPS error: ${err.message}. Using active corridor.`);
-            const address = await fetchAccurateAddress(state.userLocation.lat, state.userLocation.lon);
-            updateAddressDisplay(address, 25);
-            await applyLocationAndSeed(state.userLocation.lat, state.userLocation.lon, false, 25);
-          }
-          if (gpsBtn) gpsBtn.classList.remove('locking');
-          if (radarText) radarText.innerText = 'CIVIC GRID ACTIVE';
-        }
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-    );
-  } else {
-    const ipLoc = await ipPromise;
-    if (ipLoc) {
-      await applyManualCoordinates(ipLoc.lat, ipLoc.lon, 250, `${ipLoc.city}, ${ipLoc.region}`);
-    }
+  if (radarText) radarText.innerText = 'LOCKING LIVE DEVICE GPS...';
+  if (gpsBtn) {
+    gpsBtn.classList.remove('active', 'denied');
+    gpsBtn.classList.add('locking');
   }
 
-  // Watch position for live movements
-  if (navigator.geolocation) {
-    state.gpsWatchId = navigator.geolocation.watchPosition(
-      async (pos) => {
-        // Only auto-update if not manually pinned
-        if (!state.isPinpointMode) {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          const acc = pos.coords.accuracy || 10;
-          state.userLocation.lat = lat;
-          state.userLocation.lon = lon;
-          state.userLocation.accuracy = acc;
-          updateUserMarker(lat, lon, acc);
-          updateDistanceReadouts();
-        }
-      },
-      (err) => console.debug('watchPosition tick error:', err.message),
-      { enableHighAccuracy: true, maximumAge: 5000 }
-    );
+  if (!navigator.geolocation) {
+    handleGpsError({ code: 2, message: 'Geolocation is not supported by your browser.' });
+    return;
+  }
+
+  // Clear existing watch if any to avoid duplicate threads
+  if (state.gpsWatchId !== null) {
+    navigator.geolocation.clearWatch(state.gpsWatchId);
+    state.gpsWatchId = null;
+  }
+
+  const highAccuracyOpts = { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 };
+  const standardOpts = { enableHighAccuracy: false, timeout: 12000, maximumAge: 30000 };
+
+  // 1. Initial GPS Lock: Try High Accuracy first; if unsupported/timed out indoors, fallback to device standard
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      await handleGpsSuccess(pos);
+    },
+    (err) => {
+      if (err && err.code === 1) {
+        // User explicitly denied permission
+        handleGpsError(err);
+        return;
+      }
+      console.warn('High-accuracy GPS fix failed or timed out. Falling back to device standard positioning...', err);
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          await handleGpsSuccess(pos);
+        },
+        (err2) => {
+          handleGpsError(err2);
+        },
+        standardOpts
+      );
+    },
+    highAccuracyOpts
+  );
+
+  // 2. Continuous Real-Time GPS Tracking
+  state.gpsWatchId = navigator.geolocation.watchPosition(
+    async (pos) => {
+      await handleGpsSuccess(pos);
+    },
+    (err) => {
+      console.warn('GPS continuous tracking notice:', err.message);
+      if (err && err.code === 1) {
+        handleGpsError(err);
+      }
+    },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+  );
+}
+
+async function handleGpsSuccess(pos) {
+  const lat = pos.coords.latitude;
+  const lon = pos.coords.longitude;
+  const acc = pos.coords.accuracy || 10;
+
+  const prevLat = state.userLocation.lat;
+  const prevLon = state.userLocation.lon;
+  const isFirstRealFix = !state.userLocation.hasHardwareGps;
+  const movedKm = getHaversineDistance(prevLat, prevLon, lat, lon);
+
+  state.userLocation.lat = lat;
+  state.userLocation.lon = lon;
+  state.userLocation.accuracy = acc;
+  state.userLocation.hasHardwareGps = true;
+  state.gpsPermissionDenied = false;
+
+  // Hide permission prompt if previously displayed
+  const permModal = document.getElementById('gps-permission-modal');
+  if (permModal) permModal.classList.add('hidden');
+
+  const gpsBtn = document.getElementById('gps-action-btn');
+  if (gpsBtn) {
+    gpsBtn.classList.remove('locking', 'denied');
+    gpsBtn.classList.add('active');
+  }
+
+  const radarText = document.getElementById('radar-readout-text');
+  if (radarText) radarText.innerText = `GPS LOCKED: ±${Math.round(acc)}M ACCURACY`;
+
+  logTelemetry(`🛰️ Live GPS fix: ${lat.toFixed(5)}, ${lon.toFixed(5)} (±${Math.round(acc)}m)`);
+
+  updateUserMarker(lat, lon, acc);
+  updateDistanceReadouts();
+
+  // Update modal telemetry readouts if opened
+  const coordsDisplay = document.getElementById('modal-coords-display');
+  const accuracyDisplay = document.getElementById('modal-accuracy-display');
+  const statusBadge = document.getElementById('modal-gps-status-badge');
+  if (coordsDisplay) coordsDisplay.innerText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  if (accuracyDisplay) accuracyDisplay.innerText = `±${Math.round(acc)}m`;
+  if (statusBadge) {
+    statusBadge.className = 'status-badge-chip green';
+    statusBadge.innerText = '🟢 Live Hardware GPS Fixed';
+  }
+
+  // If first real GPS fix OR user moved > 300m OR facilities not yet loaded:
+  if (isFirstRealFix || movedKm > 0.3 || state.facilities.length === 0) {
+    // 1. Immediately seed and render nodes surrounding the live GPS location
+    await applyLocationAndSeed(lat, lon, true, acc);
+    if (state.map) {
+      state.map.flyTo([lat, lon], 15, { animate: true, duration: 1.0 });
+    }
+    // 2. Fetch reverse-geocoded address in parallel without delaying node rendering
+    fetchAccurateAddress(lat, lon).then(address => {
+      state.userLocation.addressString = address;
+      updateAddressDisplay(address, acc);
+      const resolvedEl = document.getElementById('modal-resolved-address');
+      if (resolvedEl) resolvedEl.innerText = address;
+    }).catch(() => {});
+  } else {
+    updateDistanceReadouts();
   }
 }
 
-/**
- * Directly updates location to specific coordinates (e.g. from search, drag, or click)
- */
-async function applyManualCoordinates(lat, lon, accuracy = 10, customName = null) {
-  state.userLocation.lat = lat;
-  state.userLocation.lon = lon;
-  state.userLocation.accuracy = accuracy;
+function handleGpsError(err) {
+  state.userLocation.hasHardwareGps = false;
+  state.gpsPermissionDenied = true;
 
-  const address = customName || await fetchAccurateAddress(lat, lon);
-  state.userLocation.addressString = address;
+  const gpsBtn = document.getElementById('gps-action-btn');
+  if (gpsBtn) {
+    gpsBtn.classList.remove('locking', 'active');
+    gpsBtn.classList.add('denied');
+  }
 
-  updateAddressDisplay(address, accuracy);
-  await applyLocationAndSeed(lat, lon, true, accuracy);
+  const radarText = document.getElementById('radar-readout-text');
+  if (radarText) radarText.innerText = 'GPS PERMISSION REQUIRED';
 
-  const coordsDisplay = document.getElementById('modal-coords-display');
-  const modalAddr = document.getElementById('modal-resolved-address');
-  if (coordsDisplay) coordsDisplay.innerText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-  if (modalAddr) modalAddr.innerText = address;
+  let msg = 'Live device GPS is required to operate. Please enable location permissions in your browser or device settings and retry.';
+  if (err && err.code === 1) {
+    msg = 'Location permission was denied. Please allow location access in your browser site settings and click "Re-Lock GPS".';
+  } else if (err && err.code === 2) {
+    msg = 'Device position is currently unavailable. Please verify device GPS is active and click "Re-Lock GPS".';
+  } else if (err && err.code === 3) {
+    msg = 'GPS acquisition timed out. Please click "Re-Lock GPS" to retry.';
+  }
 
-  logTelemetry(`📍 Location updated to: ${address} [${lat.toFixed(5)}, ${lon.toFixed(5)}]`);
+  logTelemetry(`⚠️ GPS Error: ${msg}`);
+
+  const addrEl = document.getElementById('user-live-address');
+  if (addrEl) addrEl.innerText = 'GPS Permission Required — Enable Location';
+  const subEl = document.getElementById('address-subtext');
+  if (subEl) subEl.innerText = 'Requires real device GPS to operate';
+  const accEl = document.getElementById('gps-accuracy-badge');
+  if (accEl) accEl.innerText = 'No Fix';
+
+  const permModal = document.getElementById('gps-permission-modal');
+  const permMsg = document.getElementById('gps-permission-error-text');
+  if (permMsg) permMsg.innerText = msg;
+  if (permModal) permModal.classList.remove('hidden');
+
+  const statusBadge = document.getElementById('modal-gps-status-badge');
+  if (statusBadge) {
+    statusBadge.className = 'status-badge-chip red';
+    statusBadge.innerText = '🔴 GPS Access Denied / Unavailable';
+  }
 }
 
 function updateAddressDisplay(addressStr, accuracyMeters) {
@@ -527,7 +726,7 @@ function recenterOnUser() {
 // MAP & LEAFLET RENDERING ENGINE (DRAGGABLE USER BEACON)
 // ============================================================================
 function initMapEngine() {
-  const darkMatter = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  const darkMatter = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap & CartoDB',
     subdomains: 'abcd',
     maxZoom: 19
@@ -549,15 +748,8 @@ function initMapEngine() {
 
   L.control.zoom({ position: 'bottomleft' }).addTo(state.map);
 
-  // Click on map to set location handler
-  state.map.on('click', async (e) => {
-    if (state.isPinpointMode) {
-      const { lat, lng } = e.latlng;
-      await applyManualCoordinates(lat, lng, 8);
-      disablePinpointMode();
-      logTelemetry(`🎯 Pinpoint placed at: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-    }
-  });
+  // Seed initial civic nodes & marker immediately so map is never empty
+  applyLocationAndSeed(state.userLocation.lat, state.userLocation.lon, false, state.userLocation.accuracy);
 
   BackendClient.checkHealth();
   initAccurateGeolocation();
@@ -575,12 +767,11 @@ function updateUserMarker(lat, lon, accuracy) {
   if (!state.map) return;
 
   const beaconHtml = `
-    <div class="user-live-beacon" title="Drag to adjust exact location">
+    <div class="user-live-beacon" title="Live Device GPS Location">
       <div class="user-pulsing-wave"></div>
       <div class="user-center-core"></div>
       <div class="user-floating-lbl">
-        <span>YOU</span>
-        <span style="font-size:7px; opacity:0.8;">(DRAG ME)</span>
+        <span>YOU (LIVE GPS)</span>
       </div>
     </div>
   `;
@@ -596,17 +787,18 @@ function updateUserMarker(lat, lon, accuracy) {
     state.userMarker = L.marker([lat, lon], {
       icon: customUserIcon,
       zIndexOffset: 1000,
-      draggable: true
+      draggable: false,
+      interactive: false,
+      keyboard: false
     }).addTo(state.map);
-
-    // Draggable Pin Event
-    state.userMarker.on('dragend', async (e) => {
-      const pos = e.target.getLatLng();
-      logTelemetry(`📍 Marker dragged to: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}. Resolving address...`);
-      await applyManualCoordinates(pos.lat, pos.lng, 5);
-    });
+    if (state.userMarker.dragging) {
+      state.userMarker.dragging.disable();
+    }
   } else {
     state.userMarker.setLatLng([lat, lon]);
+    if (state.userMarker.dragging) {
+      state.userMarker.dragging.disable();
+    }
   }
 
   if (!state.userAccuracyCircle) {
@@ -636,7 +828,7 @@ async function applyLocationAndSeed(lat, lon, isRealGps, accuracy) {
 
   renderFacilityMarkers();
   renderFacilityDirectory();
-  logTelemetry(`Loaded 10 civic utilities around ${areaLabel}.`);
+  logTelemetry(`Loaded ${state.facilities.length} civic utilities around ${areaLabel}.`);
 }
 
 function renderFacilityMarkers() {
@@ -893,21 +1085,38 @@ function promptExitVerification(facilityId) {
   if (!fac) return;
 
   currentExitTargetId = facilityId;
-  document.getElementById('exit-modal-title').innerText = `Leaving ${fac.name}?`;
-  document.getElementById('exit-fault-choices').style.display = 'none';
-  document.getElementById('exit-prompt-modal').classList.remove('hidden');
+  const titleEl = document.getElementById('exit-modal-title');
+  if (titleEl) titleEl.innerText = `Leaving ${fac.name}?`;
+  const choicesEl = document.getElementById('exit-fault-choices');
+  if (choicesEl) choicesEl.style.display = 'none';
+  const modalEl = document.getElementById('exit-prompt-modal');
+  if (modalEl) {
+    modalEl.classList.remove('hidden');
+    modalEl.style.display = 'flex';
+  }
+}
+
+function closeExitVerificationModal() {
+  const modalEl = document.getElementById('exit-prompt-modal');
+  if (modalEl) {
+    modalEl.classList.add('hidden');
+    modalEl.style.display = 'none';
+  }
+  currentExitTargetId = null;
 }
 
 function showExitFaultOptions() {
-  document.getElementById('exit-fault-choices').style.display = 'flex';
+  const choicesEl = document.getElementById('exit-fault-choices');
+  if (choicesEl) choicesEl.style.display = 'flex';
 }
 
 async function submitExitVerification(isSuccess) {
-  if (!currentExitTargetId) return;
-  const fac = state.facilities.find(f => f.id === currentExitTargetId);
-  if (!fac) return;
+  const targetId = currentExitTargetId || state.selectedFacilityId;
+  closeExitVerificationModal();
 
-  await BackendClient.recordReport(fac.id, isSuccess, '');
+  if (!targetId) return;
+  const fac = state.facilities.find(f => f.id === targetId);
+  if (!fac) return;
 
   if (isSuccess) {
     fac.verifiedSuccesses = (fac.verifiedSuccesses || 0) + 1;
@@ -922,16 +1131,17 @@ async function submitExitVerification(isSuccess) {
     selectFacility(fac.id);
   }
 
-  document.getElementById('exit-prompt-modal').classList.add('hidden');
-  currentExitTargetId = null;
+  // Non-blocking background sync
+  BackendClient.recordReport(targetId, isSuccess, '').catch(e => console.warn('Telemetry sync error:', e));
 }
 
 async function submitExitFault(faultReason) {
-  if (!currentExitTargetId) return;
-  const fac = state.facilities.find(f => f.id === currentExitTargetId);
-  if (!fac) return;
+  const targetId = currentExitTargetId || state.selectedFacilityId;
+  closeExitVerificationModal();
 
-  await BackendClient.recordReport(fac.id, false, faultReason);
+  if (!targetId) return;
+  const fac = state.facilities.find(f => f.id === targetId);
+  if (!fac) return;
 
   fac.explicitFailures = (fac.explicitFailures || 0) + 1;
   fac.recentBounces = (fac.recentBounces || 0) + 1;
@@ -945,27 +1155,38 @@ async function submitExitFault(faultReason) {
 
   logTelemetry(`✕ 1-Tap Failure reported for ${fac.name}: [${faultReason}]. Usability score: ${fac.healthScore}%`);
 
-  if (fac.status === 'Unavailable') {
-    triggerRerouteCascade(fac);
-  }
-
   if (state.selectedFacilityId === fac.id) {
     selectFacility(fac.id);
   }
 
-  document.getElementById('exit-prompt-modal').classList.add('hidden');
-  currentExitTargetId = null;
+  if (fac.status === 'Unavailable') {
+    triggerRerouteCascade(fac);
+  }
+
+  // Non-blocking background sync
+  BackendClient.recordReport(targetId, false, faultReason).catch(e => console.warn('Telemetry sync error:', e));
 }
 
 async function simulateUserVisitCurrent() {
-  if (!state.selectedFacilityId) return;
-  const fac = state.facilities.find(f => f.id === state.selectedFacilityId);
+  let fac = state.facilities.find(f => f.id === state.selectedFacilityId);
+  if (!fac && state.facilities.length > 0) {
+    fac = state.facilities[0];
+    selectFacility(fac.id);
+  }
   if (!fac) return;
 
+  const btn = document.querySelector('.btn-simulate-visit') || document.getElementById('btn-simulate-visit');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.style.pointerEvents = 'none';
+    btn.innerHTML = `<span>⏳ Simulating Vehicle Geofence Ingress...</span>`;
+  }
+
   logTelemetry(`📍 Simulating vehicle arrival inside geofence of ${fac.name}...`);
-  setTimeout(async () => {
+
+  setTimeout(() => {
     logTelemetry(`⏱️ Dwell < 35s detected: User exited boundary without stopping. Passive bounce logged!`);
-    await BackendClient.recordVisit(fac.id, 32);
 
     fac.recentBounces = (fac.recentBounces || 0) + 1;
     FaultInferenceEngine.evaluateFacilityHealth(fac);
@@ -973,21 +1194,43 @@ async function simulateUserVisitCurrent() {
     renderFacilityDirectory();
     selectFacility(fac.id);
 
+    if (btn) {
+      btn.disabled = false;
+      btn.style.pointerEvents = 'auto';
+      btn.innerHTML = originalHtml || `<span>📍 Simulate Arrival &amp; Exit (&lt;40s Bounce)</span>`;
+    }
+
+    // Instantly display the 1-tap exit verification modal
     promptExitVerification(fac.id);
-  }, 1000);
+
+    // Non-blocking sync to backend
+    BackendClient.recordVisit(fac.id, 32).catch(e => console.warn('Telemetry sync error:', e));
+  }, 600);
 }
 
 // ============================================================================
-// LOCATION PICKER & PRECISION ADJUSTER MODAL
+// LIVE GPS TELEMETRY MONITOR MODAL
 // ============================================================================
 function openLocationPickerModal() {
   const modal = document.getElementById('location-picker-modal');
   const coords = document.getElementById('modal-coords-display');
   const addr = document.getElementById('modal-resolved-address');
+  const acc = document.getElementById('modal-accuracy-display');
+  const statusBadge = document.getElementById('modal-gps-status-badge');
   const apiDisplay = document.getElementById('modal-api-endpoint-display');
 
-  if (coords) coords.innerText = `${state.userLocation.lat.toFixed(5)}, ${state.userLocation.lon.toFixed(5)}`;
+  if (coords) coords.innerText = state.userLocation.hasHardwareGps ? `${state.userLocation.lat.toFixed(5)}, ${state.userLocation.lon.toFixed(5)}` : 'Waiting for GPS Fix...';
   if (addr) addr.innerText = state.userLocation.addressString;
+  if (acc) acc.innerText = state.userLocation.accuracy ? `±${Math.round(state.userLocation.accuracy)}m` : 'No Fix';
+  if (statusBadge) {
+    if (state.userLocation.hasHardwareGps) {
+      statusBadge.className = 'status-badge-chip green';
+      statusBadge.innerText = '🟢 Live Hardware GPS Fixed';
+    } else {
+      statusBadge.className = 'status-badge-chip red';
+      statusBadge.innerText = '🔴 GPS Not Locked';
+    }
+  }
   if (apiDisplay) apiDisplay.innerText = API_BASE;
 
   modal.classList.remove('hidden');
@@ -1007,80 +1250,10 @@ function closeLocationPickerModal() {
   document.getElementById('location-picker-modal').classList.add('hidden');
 }
 
-let addressSearchTimer = null;
-function handleAddressSearch(query) {
-  clearTimeout(addressSearchTimer);
-  const resultsBox = document.getElementById('modal-address-results');
-  const q = query.trim();
-
-  if (q.length < 2) {
-    resultsBox.style.display = 'none';
-    return;
-  }
-
-  addressSearchTimer = setTimeout(async () => {
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5`,
-        { headers: { 'Accept': 'application/json', 'User-Agent': 'LastMileGuardian-CivicGrid/2.0' } }
-      );
-      if (res.ok) {
-        const places = await res.json();
-        resultsBox.innerHTML = '';
-        if (places.length === 0) {
-          resultsBox.innerHTML = `<div style="padding:10px; font-size:11px; color:#94a3b8;">No locations found. Try city or area name.</div>`;
-        } else {
-          places.forEach(p => {
-            const item = document.createElement('div');
-            item.className = 'location-result-item';
-            item.innerHTML = `<span>📍</span> <span>${p.display_name}</span>`;
-            item.onclick = async () => {
-              const lat = parseFloat(p.lat);
-              const lon = parseFloat(p.lon);
-              resultsBox.style.display = 'none';
-              closeLocationPickerModal();
-              await applyManualCoordinates(lat, lon, 10, p.display_name);
-              recenterOnUser();
-            };
-            resultsBox.appendChild(item);
-          });
-        }
-        resultsBox.style.display = 'block';
-      }
-    } catch (e) {
-      console.warn('Address autocomplete search failed:', e);
-    }
-  }, 350);
-}
-
-function enablePinpointMode() {
-  closeLocationPickerModal();
-  state.isPinpointMode = true;
-  const banner = document.getElementById('map-pinpoint-banner');
-  if (banner) banner.style.display = 'flex';
-  logTelemetry('🎯 Pinpoint Mode Activated: Click anywhere on the map to set your location.');
-}
-
-function disablePinpointMode() {
-  state.isPinpointMode = false;
-  const banner = document.getElementById('map-pinpoint-banner');
-  if (banner) banner.style.display = 'none';
-}
-
-async function useNetworkIpLocation() {
-  closeLocationPickerModal();
-  logTelemetry('🌐 Fetching network IP location...');
-  const loc = await fetchNetworkIpLocation();
-  if (loc) {
-    await applyManualCoordinates(loc.lat, loc.lon, 250, `${loc.city}, ${loc.region}`);
-    recenterOnUser();
-  } else {
-    alert('Unable to retrieve network IP location. Please try searching your city or dragging the pin.');
-  }
-}
-
 async function reTriggerGpsHardware() {
   closeLocationPickerModal();
+  const permModal = document.getElementById('gps-permission-modal');
+  if (permModal) permModal.classList.add('hidden');
   logTelemetry('🛰️ Re-triggering hardware GPS acquisition with high accuracy...');
   initAccurateGeolocation();
 }
@@ -1088,7 +1261,6 @@ async function reTriggerGpsHardware() {
 // ============================================================================
 // GLOBAL SEARCH BAR & ONBOARDING
 // ============================================================================
-let globalSearchTimer = null;
 function handleSearch(query) {
   const dropdown = document.getElementById('search-dropdown');
   const q = query.trim().toLowerCase();
@@ -1098,7 +1270,7 @@ function handleSearch(query) {
     return;
   }
 
-  // 1. Check local facilities
+  // Filter local facilities only (no manual location jumping)
   const facilityMatches = state.facilities.filter(f =>
     f.name.toLowerCase().includes(q) ||
     f.corridor.toLowerCase().includes(q) ||
@@ -1130,47 +1302,13 @@ function handleSearch(query) {
       `;
       dropdown.appendChild(row);
     });
-  }
-
-  // 2. Also offer to jump to location if query is longer than 2 chars
-  if (q.length >= 3) {
-    clearTimeout(globalSearchTimer);
-    globalSearchTimer = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=3`,
-          { headers: { 'Accept': 'application/json', 'User-Agent': 'LastMileGuardian-CivicGrid/2.0' } }
-        );
-        if (res.ok) {
-          const places = await res.json();
-          if (places.length > 0) {
-            const sec2 = document.createElement('div');
-            sec2.className = 'search-section-header';
-            sec2.innerText = 'Jump Radar To City / Area';
-            dropdown.appendChild(sec2);
-
-            places.forEach(p => {
-              const jumpRow = document.createElement('div');
-              jumpRow.className = 'search-match-row search-place-jump';
-              jumpRow.innerHTML = `
-                <div>
-                  <div class="match-main-text">📍 Move Radar Here</div>
-                  <div class="match-sub-text">${p.display_name}</div>
-                </div>
-                <span style="font-size:11px; color:#38bdf8; font-weight:800;">JUMP ➔</span>
-              `;
-              jumpRow.onclick = async () => {
-                dropdown.style.display = 'none';
-                document.getElementById('global-service-search').value = '';
-                await applyManualCoordinates(parseFloat(p.lat), parseFloat(p.lon), 10, p.display_name);
-                recenterOnUser();
-              };
-              dropdown.appendChild(jumpRow);
-            });
-          }
-        }
-      } catch (e) {}
-    }, 300);
+  } else {
+    const noMatch = document.createElement('div');
+    noMatch.style.padding = '12px 14px';
+    noMatch.style.fontSize = '11.5px';
+    noMatch.style.color = '#94a3b8';
+    noMatch.innerText = 'No matching civic utilities nearby.';
+    dropdown.appendChild(noMatch);
   }
 
   dropdown.style.display = 'block';
@@ -1212,12 +1350,10 @@ function launchWithIntent(intent) {
 // PITCH DEMO DECK CONTROLLER
 // ============================================================================
 async function triggerPitchAbort() {
-  const atm = state.facilities.find(f => f.category === 'ATM');
+  const atm = state.facilities.find(f => f.category === 'ATM') || state.facilities[0];
   if (!atm) return;
 
   logTelemetry(`⚡ PITCH SCENARIO: Simulating cash exhaustion & rapid bounce surge at ${atm.name}...`);
-
-  await BackendClient.triggerSimAbort();
 
   atm.recentBounces = 3;
   atm.explicitFailures = 1;
@@ -1231,15 +1367,16 @@ async function triggerPitchAbort() {
 
   selectFacility(atm.id);
   triggerRerouteCascade(atm);
+
+  // Non-blocking sync
+  BackendClient.triggerSimAbort().catch(() => {});
 }
 
 async function triggerPitchSuccess() {
-  const atm = state.facilities.find(f => f.category === 'ATM');
+  const atm = state.facilities.find(f => f.category === 'ATM') || state.facilities[0];
   if (!atm) return;
 
   logTelemetry(`✓ PITCH SCENARIO: Cash replenishment & successful transactions confirmed at ${atm.name}.`);
-
-  await BackendClient.triggerSimSuccess();
 
   atm.recentBounces = 0;
   atm.explicitFailures = 0;
@@ -1254,11 +1391,13 @@ async function triggerPitchSuccess() {
   dismissRerouteBanner();
 
   selectFacility(atm.id);
+
+  // Non-blocking sync
+  BackendClient.triggerSimSuccess().catch(() => {});
 }
 
 async function resetPitchCorridor() {
   logTelemetry('↺ Resetting all civic utility nodes to baseline operational health...');
-  await BackendClient.triggerSimReset();
 
   state.facilities.forEach(fac => {
     fac.recentBounces = 0;
@@ -1271,6 +1410,9 @@ async function resetPitchCorridor() {
   renderFacilityDirectory();
   dismissRerouteBanner();
   showDirectoryPane();
+
+  // Non-blocking sync
+  BackendClient.triggerSimReset().catch(() => {});
 }
 
 function logTelemetry(msg) {

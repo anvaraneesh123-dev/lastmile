@@ -382,37 +382,7 @@
       white-space: nowrap;
     }
 
-    .btn-adjust-pin {
-      background: rgba(56, 189, 248, 0.15);
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      color: var(--brand-cyan);
-      border-radius: 8px;
-      padding: 3px 8px;
-      font-size: 10px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      transition: all 0.15s;
-    }
-    .btn-adjust-pin:hover { background: var(--brand-cyan); color: #020617; }
 
-    /* PINPOINT MODE ALERT BANNER */
-    .pinpoint-mode-banner {
-      display: none;
-      pointer-events: auto !important;
-      background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
-      color: #020617;
-      border-radius: 12px;
-      padding: 8px 14px;
-      font-size: 11px;
-      font-weight: 800;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-      align-items: center;
-      justify-content: space-between;
-      animation: slideInDown 0.25s;
-    }
 
     .search-flyout-menu {
       display: none;
@@ -499,15 +469,21 @@
       z-index: 1;
     }
 
-    /* LIVE USER BEACON (DRAGGABLE) */
+    /* LIVE USER BEACON (READ-ONLY) */
     .user-live-beacon {
       position: relative;
       width: 36px;
       height: 36px;
-      cursor: grab;
+      cursor: default !important;
+      pointer-events: none !important;
+      user-select: none;
+      -webkit-user-drag: none;
     }
 
-    .user-live-beacon:active { cursor: grabbing; }
+    .leaflet-user-live-marker {
+      pointer-events: none !important;
+      cursor: default !important;
+    }
 
     .user-center-core {
       position: absolute;
@@ -741,78 +717,49 @@
     .modal-header-tag { font-size: 9px; font-weight: 800; color: var(--brand-cyan); letter-spacing: 0.8px; }
     .modal-close-btn { background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer; }
 
-    .location-search-input-box {
-      position: relative;
+    .btn-relock-gps {
       width: 100%;
-    }
-
-    .location-search-input {
-      width: 100%;
-      height: 44px;
-      background: rgba(2, 6, 23, 0.8);
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      border-radius: 12px;
-      padding: 0 14px 0 38px;
-      color: #ffffff;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(14, 165, 233, 0.35));
+      border: 1px solid var(--brand-cyan);
+      border-radius: 14px;
+      padding: 12px 18px;
       font-size: 13px;
-      outline: none;
-    }
-    .location-search-input:focus { border-color: var(--brand-cyan); box-shadow: 0 0 12px rgba(56, 189, 248, 0.3); }
-
-    .input-search-icon {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 15px;
-      color: #64748b;
-    }
-
-    .location-results-list {
-      max-height: 180px;
-      overflow-y: auto;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(2, 6, 23, 0.6);
-      display: none;
-    }
-
-    .location-result-item {
-      padding: 9px 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-weight: 800;
+      color: #ffffff;
       cursor: pointer;
-      font-size: 11.5px;
-      color: #cbd5e1;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(56, 189, 248, 0.25);
     }
-    .location-result-item:hover { background: rgba(56, 189, 248, 0.15); color: #ffffff; }
-
-    .location-quick-tools {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
+    .btn-relock-gps:hover {
+      background: var(--brand-cyan);
+      color: #020617;
+      box-shadow: 0 6px 24px rgba(56, 189, 248, 0.4);
+      transform: translateY(-1px);
     }
 
-    .btn-quick-loc {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 10px;
+    .status-badge-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
       font-size: 11px;
       font-weight: 700;
-      color: #e2e8f0;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      transition: all 0.15s;
+      width: fit-content;
     }
-    .btn-quick-loc:hover {
-      background: rgba(56, 189, 248, 0.12);
-      border-color: rgba(56, 189, 248, 0.35);
-      color: #ffffff;
+    .status-badge-chip.green {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+    .status-badge-chip.red {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
     }
 
     .current-coords-chip {
@@ -870,6 +817,25 @@
       font-weight: 800;
       color: var(--brand-cyan);
       letter-spacing: 0.8px;
+    }
+
+    .btn-modal-dismiss {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      color: #94a3b8;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .btn-modal-dismiss:hover {
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
     }
 
     .exit-prompt-title {
@@ -1212,32 +1178,25 @@
 <header class="top-command-deck">
   <div class="search-command-island">
     <button class="btn-network-info" onclick="openPortal()" title="Network Briefing">🛡️</button>
-    <input type="text" id="global-service-search" placeholder="Search facilities or type any city/area..." oninput="handleSearch(this.value)">
+    <input type="text" id="global-service-search" placeholder="Search nearby utilities (ATMs, Fuel, Clinics...)" oninput="handleSearch(this.value)">
     <button id="gps-action-btn" class="btn-gps-satellite" onclick="toggleHardwareGps()" title="Lock Live GPS Location">
       <svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-7-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
     </button>
     <div id="search-dropdown" class="search-flyout-menu"></div>
   </div>
 
-  <!-- ACCURATE LIVE ADDRESS CHIP WITH EDIT/SEARCH ACTION -->
-  <div class="live-address-banner" id="live-address-chip" onclick="openLocationPickerModal()">
+  <!-- LIVE GPS STATUS BANNER -->
+  <div class="live-address-banner" id="live-address-chip" onclick="openLocationPickerModal()" title="View GPS Telemetry">
     <div class="address-left">
-      <span class="address-pin-icon">📍</span>
+      <span class="address-pin-icon">🛰️</span>
       <div class="address-text-group">
         <span id="user-live-address" class="address-text-string">Acquiring live GPS address...</span>
-        <span id="address-subtext" class="address-subtext">Click to search address or drag blue pin</span>
+        <span id="address-subtext" class="address-subtext">Continuous Live GPS Tracking</span>
       </div>
     </div>
     <div class="address-right">
       <span id="gps-accuracy-badge" class="address-accuracy-tag">±--m</span>
-      <button class="btn-adjust-pin" onclick="event.stopPropagation(); openLocationPickerModal()">✏️ Edit</button>
     </div>
-  </div>
-
-  <!-- PINPOINT ON MAP BANNER -->
-  <div id="map-pinpoint-banner" class="pinpoint-mode-banner">
-    <span>🎯 Pinpoint Mode Active: Click anywhere on the map to set your location</span>
-    <button style="background:#020617; color:#fff; border:none; border-radius:6px; padding:3px 8px; font-weight:800; cursor:pointer;" onclick="disablePinpointMode()">Cancel</button>
   </div>
 
   <div class="category-carousel">
@@ -1278,62 +1237,87 @@
   </div>
 </div>
 
-<!-- LOCATION PICKER & PRECISION ADJUSTER MODAL -->
+<!-- LIVE GPS TELEMETRY MONITOR MODAL -->
 <div id="location-picker-modal" class="location-modal-overlay hidden">
   <div class="location-modal-card">
     <div class="modal-header-row">
-      <span class="modal-header-tag">📍 LOCATION PRECISION ADJUSTER</span>
+      <span class="modal-header-tag">🛰️ LIVE GPS TELEMETRY MONITOR</span>
       <button class="modal-close-btn" onclick="closeLocationPickerModal()">&times;</button>
     </div>
 
-    <div>
-      <h3 style="font-size:16px; font-weight:800; color:#fff; margin-bottom:4px;">Set Your Exact Current Location</h3>
-      <p style="font-size:11px; color:#94a3b8;">Search any street, landmark, or city to place the civic usability radar.</p>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <h3 style="font-size:16px; font-weight:800; color:#fff; margin-bottom:2px;">Live Device GPS Status</h3>
+        <p style="font-size:11px; color:#94a3b8;">Real-time satellite coordinates powering Civic Radar.</p>
+      </div>
+      <div id="modal-gps-status-badge" class="status-badge-chip green">🟢 Live GPS Fixed</div>
     </div>
 
-    <!-- Quick Search Box -->
-    <div class="location-search-input-box">
-      <span class="input-search-icon">🔍</span>
-      <input type="text" id="modal-address-search-input" class="location-search-input" placeholder="Type street, landmark, or city..." oninput="handleAddressSearch(this.value)">
-    </div>
+    <!-- Coordinate & Accuracy Telemetry Chip -->
+    <div class="current-coords-chip" style="display:flex; flex-direction:column; gap:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Active GPS Coordinates:</span>
+        <strong id="modal-coords-display" style="color:#38bdf8; font-size:11px;">--</strong>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Accuracy Radius:</span>
+        <strong id="modal-accuracy-display" style="color:#10b981; font-size:11px;">--</strong>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:6px;">
+        <span style="font-size:9.5px; color:#64748b; display:block; margin-bottom:2px;">REVERSE-GEOCODED POSITION:</span>
+        <span id="modal-resolved-address" style="color:#e2e8f0; font-family:'Plus Jakarta Sans',sans-serif; font-size:11.5px; line-height:1.4;">--</span>
+      </div>
 
-    <!-- Autocomplete Results -->
-    <div id="modal-address-results" class="location-results-list"></div>
-
-    <!-- Quick Option Buttons -->
-    <div class="location-quick-tools">
-      <button class="btn-quick-loc" onclick="reTriggerGpsHardware()">
-        <span>🛰️</span>
-        <span>Re-Lock Hardware GPS</span>
-      </button>
-      <button class="btn-quick-loc" onclick="useNetworkIpLocation()">
-        <span>🌐</span>
-        <span>Use Network IP Location</span>
-      </button>
-      <button class="btn-quick-loc" onclick="enablePinpointMode()" style="grid-column: span 2;">
-        <span>🎯</span>
-        <span>Click Anywhere on Map to Set Location</span>
-      </button>
-    </div>
-
-    <!-- Coordinate & Address Info -->
-    <div class="current-coords-chip">
-      <div>Active Coordinates: <span id="modal-coords-display" style="color:#38bdf8;">--</span></div>
-      <div style="margin-top:2px; color:#e2e8f0; font-family:'Plus Jakarta Sans',sans-serif;" id="modal-resolved-address">--</div>
-      
       <!-- Backend URL Display & Config -->
       <div class="backend-config-row">
         <span>Backend API: <strong id="modal-api-endpoint-display" style="color:#38bdf8;">--</strong></span>
         <button style="background:none; border:1px solid rgba(56,189,248,0.4); color:#38bdf8; border-radius:6px; padding:2px 7px; font-size:9px; font-weight:700; cursor:pointer;" onclick="promptSetBackendUrl()">Set Render URL</button>
       </div>
     </div>
+
+    <!-- Single Re-Lock Action Button -->
+    <button class="btn-relock-gps" onclick="reTriggerGpsHardware()">
+      <span>🛰️</span>
+      <span>Re-Lock Hardware GPS</span>
+    </button>
+  </div>
+</div>
+
+<!-- GPS PERMISSION REQUIRED MODAL -->
+<div id="gps-permission-modal" class="location-modal-overlay hidden">
+  <div class="location-modal-card" style="border-color: rgba(239, 68, 68, 0.4);">
+    <div class="modal-header-row">
+      <span class="modal-header-tag" style="color: var(--brand-rose);">⚠️ GPS PERMISSION REQUIRED</span>
+      <button class="modal-close-btn" onclick="document.getElementById('gps-permission-modal').classList.add('hidden')">&times;</button>
+    </div>
+    <div>
+      <h3 style="font-size:16px; font-weight:800; color:#fff; margin-bottom:6px;">Live Device GPS Access Needed</h3>
+      <p id="gps-permission-error-text" style="font-size:12px; color:#cbd5e1; line-height:1.5;">
+        LastMile Guardian relies strictly on real-time device GPS to verify civic infrastructure availability and calculate autonomous reroutes. Manual location overrides and IP approximations are disabled.
+      </p>
+    </div>
+    <div style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 12px; padding: 12px; font-size: 11.5px; color: #fca5a5;">
+      <strong>How to enable:</strong>
+      <ol style="margin-left: 18px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+        <li>Click the site permissions / lock icon in your browser address bar.</li>
+        <li>Set <strong>Location</strong> permission to <strong>Allow</strong>.</li>
+        <li>Ensure your device GPS / Location service is active.</li>
+        <li>Click <strong>Retry GPS Lock</strong> below.</li>
+      </ol>
+    </div>
+    <button class="btn-relock-gps" onclick="reTriggerGpsHardware()" style="margin-top: 4px;">
+      🔄 Retry GPS Lock
+    </button>
   </div>
 </div>
 
 <!-- ZERO-FRICTION 1-TAP EXIT VERIFICATION MODAL -->
-<div id="exit-prompt-modal" class="exit-prompt-overlay hidden">
+<div id="exit-prompt-modal" class="exit-prompt-overlay hidden" onclick="if (event.target === this) closeExitVerificationModal()">
   <div class="exit-prompt-card">
-    <span class="exit-prompt-badge">⚡ ZERO-FRICTION PASSIVE VERIFICATION</span>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span class="exit-prompt-badge">⚡ ZERO-FRICTION PASSIVE VERIFICATION</span>
+      <button class="btn-modal-dismiss" onclick="closeExitVerificationModal()" title="Close dialog">✕</button>
+    </div>
     <h3 class="exit-prompt-title" id="exit-modal-title">Leaving Federal Bank ATM?</h3>
     <p class="exit-prompt-sub">Were you able to get what you needed? (1-tap verification)</p>
     
@@ -1413,7 +1397,7 @@
     </div>
 
     <div class="detail-action-dock">
-      <button class="btn-simulate-visit" onclick="simulateUserVisitCurrent()">
+      <button class="btn-simulate-visit" id="btn-simulate-visit" onclick="simulateUserVisitCurrent()">
         <span>📍 Simulate Arrival &amp; Exit (<40s Bounce)</span>
       </button>
       <a id="detail-nav-btn" href="#" target="_blank" class="btn-turn-by-turn-nav full-width">
@@ -1439,6 +1423,6 @@
 
 <!-- Scripts: Leaflet and App Engine -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=2.6.0"></script>
 </body>
 </html>
